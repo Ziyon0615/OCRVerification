@@ -326,16 +326,26 @@
         </div>
 
         <div class="card">
-            <form action="/loan-application" method="post" id="loan-form">
+            <form action="/loan-application" method="post" id="loan-form" enctype="multipart/form-data">
+                <input type="hidden" name="verification_json" id="verification_json" value="">
+                <input type="hidden" name="verified_from_analysis" id="verified_from_analysis" value="{{ '1' if verified_from_analysis else '0' }}">
+                {% if selected_applicant_user_id %}
+                <input type="hidden" name="applicant_user_id" value="{{ selected_applicant_user_id }}">
+                {% endif %}
                 {% if error %}
                 <div style="background:rgba(255,0,0,0.06);border-left:4px solid var(--error);padding:12px;margin-bottom:16px;color:var(--error)">
                     {{ error }}
                 </div>
                 {% endif %}
+                {% if is_admin_view and selected_applicant_user_id %}
+                <div style="background:rgba(0,243,255,0.08);border-left:4px solid var(--primary);padding:12px;margin-bottom:16px;color:var(--text-primary)">
+                    Viewing selected applicant: <strong>{{ selected_applicant_full_name }}</strong>
+                </div>
+                {% endif %}
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Full Name</label>
-                        <input type="text" name="full_name" class="form-input" placeholder="Enter your full name" required value="{{ full_name|default('') }}">
+                        <input type="text" name="full_name" class="form-input" placeholder="Your account full name" required value="{{ full_name|default('') }}" readonly>
                     </div>
                     
                     <div class="form-group">
@@ -373,17 +383,83 @@
                     </div>
                 </div>
 
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Employment Status</label>
+                        <select name="employment_status" class="form-select" required>
+                            <option value="" disabled {% if not employment_status %}selected{% endif %}>Select employment status</option>
+                            <option value="employed" {% if employment_status == 'employed' %}selected{% endif %}>Employed</option>
+                            <option value="self_employed" {% if employment_status == 'self_employed' %}selected{% endif %}>Self-employed</option>
+                            <option value="contract" {% if employment_status == 'contract' %}selected{% endif %}>Contract / Project-based</option>
+                            <option value="unemployed" {% if employment_status == 'unemployed' %}selected{% endif %}>Unemployed</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Employer / Business Name</label>
+                        <input type="text" name="employer_name" class="form-input" placeholder="Company or business name" value="{{ employer_name|default('') }}">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Monthly Income (PHP)</label>
+                        <input type="number" name="monthly_income" class="form-input" min="0" step="0.01" placeholder="25000" required value="{{ monthly_income|default('') }}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Other Monthly Income (PHP)</label>
+                        <input type="number" name="other_income" class="form-input" min="0" step="0.01" placeholder="0" value="{{ other_income|default('') }}">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Required Supporting Documents</label>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;padding:12px;border:1px solid var(--border-color);border-radius:10px;background:var(--input-bg)">
+                        <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" name="requested_documents" value="government_id"> Government-issued ID</label>
+                        <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" name="requested_documents" value="proof_of_income"> Proof of income</label>
+                        <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" name="requested_documents" value="bank_statement"> Bank statement</label>
+                        <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" name="requested_documents" value="proof_of_address"> Proof of address</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Primary ID Type</label>
+                    <select name="primary_id_type" class="form-select" required>
+                        <option value="" disabled {% if not primary_id_type %}selected{% endif %}>Select primary ID</option>
+                        <option value="passport" {% if primary_id_type == 'passport' %}selected{% endif %}>Passport</option>
+                        <option value="national_id" {% if primary_id_type == 'national_id' %}selected{% endif %}>National ID</option>
+                        <option value="drivers_license" {% if primary_id_type == 'drivers_license' %}selected{% endif %}>Driver License</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Upload Primary ID</label>
+                    <input type="file" name="primary_id_document" class="form-input" accept=".pdf,.png,.jpg,.jpeg" required>
+                    <div style="margin-top:6px;font-size:12px;color:var(--text-secondary)">Required: upload the selected primary ID. Accepted formats: PDF, PNG, JPG, JPEG</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Upload Supporting Document</label>
+                    <input type="file" name="supporting_document" class="form-input" accept=".pdf,.png,.jpg,.jpeg">
+                    <div style="margin-top:6px;font-size:12px;color:var(--text-secondary)">Accepted formats: PDF, PNG, JPG, JPEG</div>
+                </div>
+
                 <div class="loan-info">
                     <h3><i class="fas fa-info-circle"></i> Loan Information</h3>
                     <p id="loan-summary">Please fill in the loan details to see your estimated monthly payment and total repayment amount.</p>
                 </div>
 
                 <div class="button-group">
+                    {% if can_apply|default(true) %}
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-paper-plane"></i> Submit Application
                     </button>
-                    <a href="/" class="btn btn-secondary">
-                        <i class="fas fa-arrow-left"></i> Back to Home
+                    {% else %}
+                    <button type="button" class="btn btn-primary" disabled style="opacity:0.6;cursor:not-allowed;">
+                        <i class="fas fa-lock"></i> Application Locked
+                    </button>
+                    {% endif %}
+                    <a href="{{ '/dashboard' if is_admin_view else '/user-dashboard' }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Dashboard
                     </a>
                 </div>
             </form>
@@ -429,6 +505,23 @@
                 themeLabel.textContent = 'Dark Mode';
                 localStorage.setItem('theme', 'dark');
             }
+
+            // Bring verification results from verify page into the submitted form.
+            try {
+                const storedDocs = sessionStorage.getItem('verifiedDocuments');
+                if (storedDocs) {
+                    const parsed = JSON.parse(storedDocs);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        document.getElementById('verification_json').value = JSON.stringify(parsed);
+                        const hasVerifiedDoc = parsed.some(item => item && item.ok === true);
+                        if (hasVerifiedDoc) {
+                            document.getElementById('verified_from_analysis').value = '1';
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Could not restore verify-page results:', e);
+            }
         });
         
         // Loan amount display formatting
@@ -458,12 +551,23 @@
         // Repayment period change
         const monthsSelect = document.querySelector('select[name="months"]');
         monthsSelect.addEventListener('change', updateLoanSummary);
+
+        const monthlyIncomeInput = document.querySelector('input[name="monthly_income"]');
+        const otherIncomeInput = document.querySelector('input[name="other_income"]');
+        const employmentSelect = document.querySelector('select[name="employment_status"]');
+        monthlyIncomeInput.addEventListener('input', updateLoanSummary);
+        otherIncomeInput.addEventListener('input', updateLoanSummary);
+        employmentSelect.addEventListener('change', updateLoanSummary);
         
         // Function to calculate and update loan summary
         function updateLoanSummary() {
             const amount = parseFloat(amountInput.value) || 0;
             const months = parseInt(monthsSelect.value) || 12;
             const annualRate = parseFloat(interestInput.value) || 5;
+            const monthlyIncome = parseFloat(monthlyIncomeInput.value) || 0;
+            const otherIncome = parseFloat(otherIncomeInput.value) || 0;
+            const disposable = (monthlyIncome + otherIncome);
+            const employment = employmentSelect.value || 'not selected';
             
             if (amount <= 0 || months <= 0 || annualRate < 0) {
                 document.getElementById('loan-summary').textContent = 
@@ -490,7 +594,10 @@
                 <strong>Annual Interest Rate:</strong> ${annualRate.toFixed(2)}%<br>
                 <strong>Estimated Monthly Payment:</strong> <span style="color:var(--success)">₱${monthlyPayment.toFixed(2).toLocaleString('en-PH')}</span><br>
                 <strong>Total Repayment:</strong> ₱${totalRepayment.toFixed(2).toLocaleString('en-PH')}<br>
-                <strong>Total Interest:</strong> ₱${totalInterest.toFixed(2).toLocaleString('en-PH')}
+                <strong>Total Interest:</strong> ₱${totalInterest.toFixed(2).toLocaleString('en-PH')}<br>
+                <strong>Employment Status:</strong> ${employment.replace('_', ' ')}<br>
+                <strong>Disposable Income:</strong> ₱${disposable.toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2})}<br>
+                <strong>Affordability Ratio:</strong> ${(monthlyPayment / Math.max(disposable, 1) * 100).toFixed(2)}%
             `;
         }
         
@@ -503,10 +610,24 @@
             const amount = parseFloat(amountInput.value) || 0;
             const contact = document.querySelector('input[name="contact"]').value.trim();
             const name = document.querySelector('input[name="full_name"]').value.trim();
+            const monthlyIncome = parseFloat(monthlyIncomeInput.value) || 0;
+            const employment = employmentSelect.value;
 
             if (amount < 1000) {
                 e.preventDefault();
                 alert('Minimum loan amount is ₱1,000');
+                return;
+            }
+
+            if (!employment) {
+                e.preventDefault();
+                alert('Please select employment status');
+                return;
+            }
+
+            if (monthlyIncome <= 0) {
+                e.preventDefault();
+                alert('Monthly income must be greater than zero');
                 return;
             }
 

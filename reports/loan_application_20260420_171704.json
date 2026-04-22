@@ -1,0 +1,47 @@
+{
+  "timestamp": "2026-04-20T17:17:04.821257",
+  "full_name": "Loan Applicant",
+  "contact": "09123456789",
+  "amount": 9000.0,
+  "months": 6,
+  "interest_rate": 5.0,
+  "monthly_payment": 1521.9507962519008,
+  "employment_status": "employed",
+  "employer_name": "Test Co",
+  "monthly_income": 25000.0,
+  "other_income": 0.0,
+  "credit_score": 0,
+  "existing_debt": 0.0,
+  "requested_documents": [
+    "government_id"
+  ],
+  "primary_id_type": "national_id",
+  "validation_issues": [],
+  "recommendation": "approved",
+  "confidence_score": 99.0,
+  "risk_level": "low",
+  "risk_score": 3.18,
+  "fraud_flags": [],
+  "fraud_probability": 20.0,
+  "model_version": "risk_model_v1.0",
+  "decision_explanation": [
+    "Debt-to-income ratio assessed at 0.06",
+    "Credit score considered at not provided",
+    "Employment stability class: employed",
+    "Income to loan ratio: 2.778"
+  ],
+  "supporting_document_path": "uploads\\loan_support_20260420_171704_support.pdf",
+  "primary_id_path": "uploads\\primary_id_national_id_20260420_171704_id.png",
+  "id_verification": {
+    "is_authentic": true,
+    "confidence": 91.2,
+    "issues": []
+  },
+  "verification": {
+    "system_id_verification": {
+      "is_authentic": true,
+      "confidence": 91.2,
+      "issues": []
+    }
+  }
+}

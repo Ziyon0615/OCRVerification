@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>My Documents</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root{
+            --bg:#08111f;
+            --panel:#0f172a;
+            --panel-2:#111b31;
+            --text:#e6eef8;
+            --muted:#94a3b8;
+            --accent:#60a5fa;
+            --accent-2:#a78bfa;
+            --success:#22c55e;
+            --warning:#f59e0b;
+            --danger:#ef4444;
+            --line:rgba(255,255,255,0.08);
+        }
+        [data-theme="light"]{
+            --bg:#f6f9fc;
+            --panel:#ffffff;
+            --panel-2:#f8fbff;
+            --text:#0f172a;
+            --muted:#64748b;
+            --accent:#2563eb;
+            --accent-2:#7c3aed;
+            --success:#16a34a;
+            --warning:#d97706;
+            --danger:#dc2626;
+            --line:rgba(15,23,42,0.08);
+        }
+        *{box-sizing:border-box}
+        body{margin:0;font-family:Inter,system-ui,Segoe UI,Arial;background:
+            radial-gradient(circle at top, rgba(96,165,250,.14), transparent 28%),
+            radial-gradient(circle at bottom right, rgba(167,139,250,.12), transparent 24%),
+            var(--bg);color:var(--text);min-height:100vh}
+        .page{max-width:1200px;margin:0 auto;padding:28px 18px 40px}
+        .topbar{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap}
+        .brand{display:flex;align-items:center;gap:14px}
+        .brand-badge{width:54px;height:54px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(135deg,rgba(96,165,250,.18),rgba(167,139,250,.18));border:1px solid var(--line)}
+        .brand h1{margin:0;font-size:1.45rem}
+        .brand p{margin:4px 0 0;color:var(--muted)}
+        .controls{display:flex;gap:10px;flex-wrap:wrap}
+        .btn{display:inline-flex;align-items:center;gap:8px;padding:11px 15px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--text);text-decoration:none;cursor:pointer}
+        .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));border:0;color:#fff}
+        .btn-secondary{background:var(--panel-2)}
+        .layout{display:grid;grid-template-columns:1.15fr .85fr;gap:16px}
+        .card{background:linear-gradient(180deg,rgba(255,255,255,.03),transparent),var(--panel);border:1px solid var(--line);border-radius:22px;padding:20px;box-shadow:0 24px 70px rgba(0,0,0,.18)}
+        .section-title{font-size:1.1rem;font-weight:700;margin:0 0 10px}
+        .section-copy{color:var(--muted);line-height:1.6;margin-bottom:18px}
+        .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+        .id-type{border:1px solid var(--line);background:var(--panel-2);border-radius:14px;padding:14px;cursor:pointer;display:flex;flex-direction:column;gap:6px;transition:transform .2s ease,border-color .2s ease}
+        .id-type:hover{transform:translateY(-1px);border-color:rgba(96,165,250,.35)}
+        .id-type input{margin:0 0 4px 0}
+        .id-type strong{font-size:.95rem}
+        .id-type span{color:var(--muted);font-size:.85rem;line-height:1.4}
+        .upload-box{border:1px dashed rgba(96,165,250,.4);background:rgba(96,165,250,.05);border-radius:16px;padding:16px;margin-bottom:14px}
+        .field{margin-bottom:14px}
+        .field label{display:block;margin-bottom:8px;font-weight:600}
+        .field input[type="file"], .field select{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel-2);color:var(--text)}
+        .helper{font-size:.85rem;color:var(--muted);margin-top:8px;line-height:1.5}
+        .doc-list{display:flex;flex-direction:column;gap:12px}
+        .doc-item{padding:14px;border-radius:14px;background:var(--panel-2);border:1px solid var(--line)}
+        .doc-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+        .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:rgba(96,165,250,.12);color:var(--accent);font-size:.82rem;font-weight:600}
+        .muted{color:var(--muted)}
+        .status{margin-top:12px;color:var(--muted);font-size:.92rem}
+        .status.success{color:var(--success)}
+        .status.error{color:var(--danger)}
+        .empty{text-align:center;color:var(--muted);padding:28px 10px}
+        @media(max-width:900px){.layout{grid-template-columns:1fr}.grid{grid-template-columns:1fr}}
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="topbar">
+            <div class="brand">
+                <div class="brand-badge"><i class="fas fa-id-card"></i></div>
+                <div>
+                    <h1>My Documents</h1>
+                    <p>Upload your primary ID and supporting documents.</p>
+                </div>
+            </div>
+            <div class="controls">
+                <a class="btn btn-secondary" href="/user-dashboard"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+                <a class="btn btn-primary" href="/loan-application"><i class="fas fa-file-signature"></i> Apply for a Loan</a>
+            </div>
+        </div>
+
+        <div class="layout">
+            <div class="card">
+                <h2 class="section-title">Upload Documents</h2>
+                <div class="section-copy">Choose one primary government ID for verification. Supporting files like proof of income, bank statement, and proof of address can be uploaded separately.</div>
+
+                <form id="uploadForm">
+                    <div class="field">
+                        <label>Primary ID Type</label>
+                        <div class="grid">
+                            <label class="id-type"><input type="radio" name="document_type" value="passport" checked><strong>Passport</strong><span>Use your passport as the primary identity document.</span></label>
+                            <label class="id-type"><input type="radio" name="document_type" value="national_id"><strong>National ID</strong><span>Upload your national ID or equivalent government ID.</span></label>
+                            <label class="id-type"><input type="radio" name="document_type" value="drivers_license"><strong>Driver License</strong><span>Use your driver license as your primary ID.</span></label>
+                        </div>
+                    </div>
+
+                    <div class="upload-box">
+                        <div class="field">
+                            <label for="document_file">Upload Primary ID File</label>
+                            <input id="document_file" type="file" name="document_file" accept=".pdf,.png,.jpg,.jpeg" required>
+                            <div class="helper">Accepted formats: PDF, PNG, JPG, JPEG.</div>
+                        </div>
+                    </div>
+
+                    <div class="upload-box">
+                        <div class="field">
+                            <label for="supporting_select">Supporting Document Type</label>
+                            <select id="supporting_select" name="supporting_document_type">
+                                <option value="proof_of_income">Proof of Income</option>
+                                <option value="bank_statement">Bank Statement</option>
+                                <option value="proof_of_address">Proof of Address</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="supporting_file">Upload Supporting File</label>
+                            <input id="supporting_file" type="file" accept=".pdf,.png,.jpg,.jpeg">
+                            <div class="helper">Supporting documents are optional but help the admin review your loan faster.</div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" type="submit"><i class="fas fa-cloud-arrow-up"></i> Upload Selected File</button>
+                    <div class="status" id="uploadStatus"></div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2 class="section-title">Uploaded Documents</h2>
+                <div class="section-copy">These are the files linked to your account.</div>
+                <div id="documentsList" class="doc-list">
+                    <div class="empty">Loading your documents...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadForm = document.getElementById('uploadForm');
+        const uploadStatus = document.getElementById('uploadStatus');
+        const documentsList = document.getElementById('documentsList');
+
+        function setStatus(message, type = '') {
+            uploadStatus.className = 'status' + (type ? ` ${type}` : '');
+            uploadStatus.textContent = message;
+        }
+
+        async function loadDocuments() {
+            try {
+                const response = await fetch('/user/documents');
+                const data = await response.json();
+                if (!data.success) {
+                    documentsList.innerHTML = '<div class="empty">Unable to load documents.</div>';
+                    return;
+                }
+
+                const docs = data.documents || [];
+                if (!docs.length) {
+                    documentsList.innerHTML = '<div class="empty">No documents uploaded yet.</div>';
+                    return;
+                }
+
+                documentsList.innerHTML = docs.map(doc => `
+                    <div class="doc-item">
+                        <div class="doc-top">
+                            <div>
+                                <strong>${doc.document_type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</strong>
+                                <div class="muted" style="margin-top:6px">Uploaded: ${new Date(doc.uploaded_at).toLocaleString()}</div>
+                                <div class="muted">Status: ${doc.verified ? 'Verified' : 'Pending review'}</div>
+                            </div>
+                            <span class="pill"><i class="fas fa-file"></i> ID</span>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                documentsList.innerHTML = '<div class="empty">Failed to load documents.</div>';
+            }
+        }
+
+        uploadForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const formData = new FormData();
+            const documentType = document.querySelector('input[name="document_type"]:checked').value;
+            const primaryFile = document.getElementById('document_file').files[0];
+            const supportingFile = document.getElementById('supporting_file').files[0];
+            const supportingType = document.getElementById('supporting_select').value;
+
+            if (!primaryFile) {
+                setStatus('Please choose a primary ID file.', 'error');
+                return;
+            }
+
+            formData.append('document_type', documentType);
+            formData.append('document_file', primaryFile);
+
+            setStatus('Uploading primary ID...');
+            try {
+                const response = await fetch('/user/upload-document', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                if (!data.success) {
+                    setStatus(data.message || 'Upload failed.', 'error');
+                    return;
+                }
+
+                setStatus('Primary ID uploaded successfully.', 'success');
+                uploadForm.reset();
+                document.querySelector('input[name="document_type"][value="passport"]').checked = true;
+                await loadDocuments();
+
+                if (supportingFile) {
+                    const supportForm = new FormData();
+                    supportForm.append('document_type', supportingType);
+                    supportForm.append('document_file', supportingFile);
+                    await fetch('/user/upload-document', { method: 'POST', body: supportForm });
+                    await loadDocuments();
+                }
+            } catch (error) {
+                setStatus('Upload error: ' + error.message, 'error');
+            }
+        });
+
+        loadDocuments();
+    </script>
+</body>
+</html>

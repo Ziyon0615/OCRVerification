@@ -1,0 +1,35 @@
+{
+  "timestamp": "2026-04-20T16:59:03.891646",
+  "full_name": "Gon Freks",
+  "contact": "09941234567",
+  "amount": 10000.0,
+  "months": 6,
+  "interest_rate": 5.0,
+  "monthly_payment": 1691.0564402798896,
+  "employment_status": "self_employed",
+  "employer_name": "own business",
+  "monthly_income": 15000.0,
+  "other_income": 0.0,
+  "credit_score": 0,
+  "existing_debt": 0.0,
+  "requested_documents": [
+    "government_id"
+  ],
+  "primary_id_type": "drivers_license",
+  "validation_issues": [],
+  "recommendation": "approved",
+  "confidence_score": 99.0,
+  "risk_level": "low",
+  "risk_score": 11.21,
+  "fraud_flags": [],
+  "fraud_probability": 20.0,
+  "model_version": "risk_model_v1.0",
+  "decision_explanation": [
+    "Debt-to-income ratio assessed at 0.11",
+    "Credit score considered at not provided",
+    "Employment stability class: self employed",
+    "Income to loan ratio: 1.500"
+  ],
+  "supporting_document_path": "uploads\\loan_support_20260420_165903_thumb_300_212.png",
+  "primary_id_path": "uploads\\primary_id_drivers_license_20260420_165903_thumb_300_212.png"
+}

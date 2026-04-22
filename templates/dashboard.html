@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Dashboard - Loan Applications</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root{
             --bg: #0b1220;
@@ -15,6 +16,9 @@
             --accent-2: #a78bfa;
             --glass: rgba(255,255,255,0.03);
             --card-radius: 12px;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #22c55e;
         }
         [data-theme="light"]{
             --bg: #f6f9fc;
@@ -24,10 +28,13 @@
             --accent: #2563eb;
             --accent-2: #d946ef;
             --glass: rgba(0,0,0,0.02);
+            --danger: #dc2626;
+            --warning: #d97706;
+            --success: #16a34a;
         }
 
         html,body{min-height:100vh;margin:0;font-family:Inter,system-ui,Segoe UI,Arial;background:var(--bg);color:var(--text);display:flex;flex-direction:column}
-        .wrap{max-width:1200px;margin:28px auto;padding:20px;flex:1}
+        .wrap{max-width:1400px;margin:28px auto;padding:20px;flex:1}
 
         .top-row{display:flex;gap:16px;align-items:center;justify-content:space-between;margin-bottom:18px}
         .brand{display:flex;gap:14px;align-items:center}
@@ -35,9 +42,54 @@
 
         .controls{display:flex;gap:10px;align-items:center}
         .btn{padding:10px 14px;border-radius:10px;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+        .btn:disabled{opacity:0.45;cursor:not-allowed;pointer-events:none}
         .btn-verify{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#07111a;box-shadow:0 8px 20px rgba(96,165,250,0.12)}
         .btn-ghost{background:transparent;color:var(--muted);border:1px solid rgba(255,255,255,0.04)}
         .btn-primary{background:var(--accent);color:#062235}
+
+        .approval-btn{
+            position: relative;
+            background: linear-gradient(90deg, #f59e0b, #ef4444);
+            color: #fff;
+            border: none;
+        }
+
+        .approval-badge{
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 22px;
+            height: 22px;
+            padding: 0 7px;
+            margin-left: 8px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.18);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .approval-banner{
+            margin-top: 14px;
+            padding: 14px 16px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            background: linear-gradient(90deg, rgba(245, 158, 11, 0.12), rgba(239, 68, 68, 0.12));
+            border: 1px solid rgba(245, 158, 11, 0.35);
+            color: var(--text);
+        }
+
+        .approval-banner strong{
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .approval-banner span{
+            color: var(--muted);
+            font-size: 13px;
+        }
 
         .card{background:var(--panel);border-radius:var(--card-radius);padding:18px;box-shadow:0 6px 24px rgba(2,6,23,0.6);}
 
@@ -48,7 +100,7 @@
 
         .table-wrap{margin-top:16px;overflow:auto;border-radius:10px}
         table{width:100%;border-collapse:collapse;background:transparent}
-        thead th{position:sticky;top:0;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);backdrop-filter:blur(6px);padding:12px;text-align:left;color:var(--muted);font-size:13px}
+        thead th{position:sticky;top:0;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);padding:12px;text-align:left;color:var(--muted);font-size:13px}
         tbody td{padding:12px;border-bottom:1px solid rgba(255,255,255,0.03)}
         tbody tr{transition:background 0.15s}
         tbody tr:hover{background:rgba(255,255,255,0.02)}
@@ -60,38 +112,297 @@
         .row-actions{display:flex;gap:8px}
         .pill{padding:6px 10px;border-radius:999px;background:rgba(255,255,255,0.02);font-size:13px;color:var(--muted)}
 
-        @media(max-width:800px){.stats{flex-direction:column}.top-row{flex-direction:column;align-items:flex-start}}
+        /* Overdue styling */
+        .overdue-row{background:rgba(239,68,68,0.08) !important}
+        .overdue-row:hover{background:rgba(239,68,68,0.12) !important}
+        .overdue-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;background:rgba(239,68,68,0.15);color:var(--danger);font-size:11px;font-weight:600}
+        .on-time-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;background:rgba(34,197,94,0.15);color:var(--success);font-size:11px;font-weight:600}
+
+        /* Charts section */
+        .charts-section{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-top:16px}
+        .chart-card{background:var(--panel);border-radius:var(--card-radius);padding:16px;box-shadow:0 6px 24px rgba(2,6,23,0.6)}
+        .chart-title{font-size:14px;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+        .chart-container{position:relative;height:200px}
+
+        /* Payment modal styles */
+        .payment-type-toggle{display:flex;gap:8px;margin-bottom:16px}
+        .payment-type-btn{flex:1;padding:10px;border-radius:8px;border:2px solid rgba(255,255,255,0.1);background:transparent;color:var(--muted);cursor:pointer;transition:all 0.2s}
+        .payment-type-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(96,165,250,0.1)}
+        .payment-input-group{margin-bottom:16px}
+        .payment-input-group label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+        .payment-input-group input{width:100%;padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:var(--glass);color:var(--text);font-size:16px;outline:none}
+        .payment-input-group input:focus{border-color:var(--accent)}
+        .payment-summary{background:var(--glass);padding:12px;border-radius:8px;margin-bottom:16px}
+        .payment-summary-row{display:flex;justify-content:space-between;padding:4px 0;font-size:13px}
+        .payment-summary-row.total{font-weight:700;font-size:15px;border-top:1px solid rgba(255,255,255,0.1);padding-top:8px;margin-top:4px}
+
+        /* Receipt modal styles */
+        .receipt-container{background:#fff;color:#1a1a1a;padding:24px;border-radius:8px;font-family:Georgia,serif}
+        .receipt-header{text-align:center;border-bottom:2px dashed #ccc;padding-bottom:16px;margin-bottom:16px}
+        .receipt-header h2{margin:0 0 4px 0;font-size:20px}
+        .receipt-header p{margin:0;color:#666;font-size:12px}
+        .receipt-body{margin-bottom:16px}
+        .receipt-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dotted #ddd}
+        .receipt-row.highlight{background:#f0f9ff;margin:8px -12px;padding:8px 12px;border-radius:4px;border:none}
+        .receipt-footer{text-align:center;border-top:2px dashed #ccc;padding-top:16px;font-size:11px;color:#666}
+        @media print{
+            body *{visibility:hidden}
+            #receiptModal,#receiptModal *{visibility:visible}
+            #receiptModal{position:absolute;left:0;top:0;width:100%;background:#fff}
+            .no-print{display:none !important}
+        }
+
+        /* ============ RESPONSIVE STYLES ============ */
+        
+        /* Large Tablets */
+        @media(max-width:1024px){
+            .wrap{padding:15px;margin:15px auto}
+            .charts-section{grid-template-columns:repeat(2,1fr)}
+        }
+
+        /* Tablets */
+        @media(max-width:800px){
+            .wrap{padding:12px;margin:12px auto}
+            .stats{flex-direction:row;flex-wrap:wrap}
+            .stat{min-width:calc(50% - 8px);flex:1}
+            .top-row{flex-direction:column;align-items:stretch;gap:12px}
+            .brand h1{font-size:16px}
+            .controls{justify-content:center;flex-wrap:wrap}
+            .charts-section{grid-template-columns:1fr}
+            .chart-card{padding:12px}
+            .chart-container{height:180px}
+            table{font-size:12px}
+            thead th,tbody td{padding:8px 6px}
+            .row-actions{flex-wrap:wrap;gap:4px}
+            .row-actions .btn{padding:6px 8px;font-size:11px}
+            .modal-box{min-width:auto;width:90%;max-width:400px}
+        }
+
+        /* Mobile Phones */
+        @media(max-width:600px){
+            .wrap{padding:10px;margin:8px}
+            .top-row{gap:10px}
+            .brand{justify-content:center}
+            .brand h1{font-size:14px}
+            .brand i{font-size:16px}
+            .controls{gap:6px}
+            .controls .btn{padding:8px 10px;font-size:12px}
+            #paidRecordsBtn span{display:none}
+            .stats{gap:8px}
+            .stat{min-width:calc(50% - 6px);padding:8px 10px}
+            .stat .label{font-size:10px}
+            .stat .value{font-size:14px}
+            .card{padding:12px}
+            .search-row{flex-direction:column;gap:8px}
+            .search{width:100%}
+            .search input{font-size:13px}
+            .pill{font-size:11px;text-align:center}
+            .table-wrap{margin-top:12px;overflow-x:auto}
+            table{min-width:800px;font-size:11px}
+            thead th{padding:10px 6px;font-size:11px;white-space:nowrap}
+            tbody td{padding:10px 6px}
+            .row-actions{flex-direction:column;gap:3px}
+            .row-actions .btn{width:100%;justify-content:center;padding:6px;font-size:10px}
+            .charts-section{gap:12px;margin-top:12px}
+            .chart-card{padding:10px}
+            .chart-title{font-size:12px}
+            .chart-container{height:160px}
+            .modal-box{width:95%;padding:14px;border-radius:10px}
+            .modal-box[style*="max-width:900px"]{max-width:95% !important}
+            .modal-box[style*="max-width:600px"]{max-width:95% !important}
+            .modal-box[style*="max-width:450px"]{max-width:95% !important}
+            .modal-box[style*="max-width:420px"]{max-width:95% !important}
+            .payment-type-toggle{flex-direction:column;gap:6px}
+            .payment-type-btn{padding:12px;font-size:13px}
+            .payment-summary{padding:10px}
+            .payment-summary-row{font-size:12px}
+            .receipt-container{padding:16px}
+            .receipt-header h2{font-size:16px}
+            .receipt-row{font-size:12px}
+            /* Hide some columns on mobile for table readability */
+            .cell-timestamp,.cell-interest{display:none}
+            thead th:nth-child(2),tbody td:nth-child(2),
+            thead th:nth-child(9),tbody td:nth-child(9){display:none}
+        }
+
+        /* Very Small Phones */
+        @media(max-width:400px){
+            .wrap{padding:8px;margin:5px}
+            .brand h1{font-size:12px}
+            .controls .btn{padding:6px 8px;font-size:11px}
+            .stat{padding:6px 8px}
+            .stat .value{font-size:12px}
+            table{min-width:700px;font-size:10px}
+            thead th,tbody td{padding:8px 4px}
+            .row-actions .btn{font-size:9px;padding:5px}
+            .chart-container{height:140px}
+            .modal-box{padding:12px}
+            .payment-type-btn{padding:10px;font-size:12px}
+            .payment-input-group label{font-size:11px}
+            .payment-input-group input{padding:10px;font-size:14px}
+        }
+
+        /* Landscape mode */
+        @media(max-height:500px) and (orientation:landscape){
+            .modal-box{max-height:90vh;overflow-y:auto}
+            .chart-container{height:120px}
+        }
+
         /* Password modal */
         .modal-backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,0.6);z-index:9999}
         .modal-box{background:var(--panel);padding:18px;border-radius:12px;min-width:320px;box-shadow:0 12px 40px rgba(2,6,23,0.6);color:var(--text)}
         .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
         .modal-input{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--text);outline:none}
+    
+        /* Auto-migrated inline styles */
+        .inl-1{border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px}
+        .inl-1{background:linear-gradient(90deg,rgba(239,68,68,0.1),rgba(220,38,38,0.1));border:1px solid rgba(239,68,68,0.3)}
+        .inl-1{font-weight:600}
+        .inl-1{color:#16a34a}
+        .inl-1{max-width:420px;width:95%}
+        .inl-1{color:var(--muted);font-size:13px}
+        .inl-1{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px}
+        .inl-1{padding:6px}
+        .inl-1{min-width:320px}
+        .inl-1{margin-top:8px}
+        .inl-1{font-size:13px;color:var(--muted)}
+        .inl-1{padding:10px;font-weight:600}
+        .inl-1{padding:10px;text-align:left}
+        .inl-1{font-size:13px;color:var(--muted);margin-bottom:12px}
+        .inl-1{border-bottom:1px solid rgba(255,255,255,0.05)}
+        .inl-1{color:#22c55e}
+        .inl-1{background:linear-gradient(90deg,#ef4444,#dc2626);color:#fff;border:none;width:100%}
+        .inl-1{text-align:center;color:var(--muted);margin-top:14px;padding:12px 0}
+        .inl-1{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+        .inl-1{background:linear-gradient(90deg,#22c55e,#16a34a);color:#fff;border:none;}
+        .inl-1{display:flex;gap:10px;justify-content:center;margin-top:12px}
+        .inl-1{padding:10px}
+        .inl-1{max-width:900px;width:95%}
+        .inl-1{font-size:11px;color:var(--muted)}
+        .inl-1{color:var(--muted);margin-right:8px}
+        .inl-1{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:20px}
+        .inl-1{background:linear-gradient(90deg,#22c55e,#16a34a);color:#fff;border:none;width:100%}
+        .inl-1{padding:10px;color:#22c55e;font-weight:600}
+        .inl-1{font-weight:700;font-size:18px;color:#22c55e}
+        .inl-1{width:100%;border-collapse:collapse;color:var(--text)}
+        .inl-1{font-weight:700;margin-bottom:16px;font-size:16px}
+        .inl-1{text-align:left;padding:6px}
+        .inl-1{max-width:600px;width:95%}
+        .inl-1{font-weight:600;margin-bottom:8px;color:#22c55e}
+        .inl-1{background:rgba(34,197,94,0.1)}
+        .inl-1{display:none}
+        .inl-1{text-align:center;padding:20px;color:var(--muted)}
+        .inl-1{display:flex;gap:12px;margin-top:10px;flex-wrap:wrap}
+        .inl-1{font-size:20px;color:var(--accent)}
+        .inl-1{color:var(--accent)}
+        .inl-1{max-height:450px;overflow:auto;margin-bottom:8px}
+        .inl-1{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+        .inl-1{grid-column:span 2}
+        .inl-1{width:70px}
+        .inl-1{padding:6px 10px;font-size:12px}
+        .inl-1{font-weight:700;margin-bottom:8px}
+        .inl-1{color:var(--warning)}
+        .inl-1{border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:14px;background:rgba(239,68,68,0.05)}
+        .inl-1{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+        .inl-1{color:var(--muted)}
+        .inl-1{display:flex;flex-direction:column;gap:4px}
+        .inl-1{padding:8px 12px}
+        .inl-1{color:var(--danger)}
+        .inl-1{width:160px}
+        .inl-1{background:linear-gradient(90deg,#8b5cf6,#7c3aed);color:#fff;border:none;}
+        .inl-1{font-size:13px;color:var(--muted);margin-bottom:10px}
+        .inl-1{width:100%;border-collapse:collapse;color:var(--text);font-size:13px}
+        .inl-1{background:linear-gradient(90deg,rgba(245,158,11,0.12),rgba(239,68,68,0.12));border:1px solid rgba(245,158,11,0.35);margin-top:12px}
+        .inl-1{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+        .inl-1{background:var(--panel)}
+        .inl-1{font-weight:600;margin-bottom:8px;color:var(--danger)}
+        .inl-1{max-width:450px;width:95%;padding:0;background:transparent;box-shadow:none}
+        .inl-1{max-width:500px;width:95%}
+        .inl-1{font-weight:700;font-size:18px;color:#8b5cf6}
+        .inl-1{color:var(--muted);text-align:center}
+        .inl-1{width:100%;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px}
+        .inl-1{background:linear-gradient(90deg,rgba(34,197,94,0.1),rgba(22,163,74,0.1));border:1px solid rgba(34,197,94,0.3)}
+        .inl-1{display:none;margin-top:8px;padding:8px;background:rgba(34,197,94,0.15);border-radius:6px;text-align:center;color:var(--success);font-size:12px}
+        .inl-1{margin-top:8px;font-size:14px}
+        .inl-1{margin-bottom:16px;padding:12px;background:var(--glass);border-radius:8px}
+        .inl-1{font-size:14px}
+        .inl-1{width:100%;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:14px}
+        .inl-1{color:var(--muted);margin-bottom:8px}
+        .inl-1{margin-bottom:12px}
+        .inl-1{color:var(--muted);max-height:320px;overflow:auto;margin-bottom:8px}
     </style>
 </head>
 <body>
     <div class="wrap">
         <div class="top-row">
-            <div class="brand"><i class="fas fa-th-large" style="font-size:20px;color:var(--accent)"></i><h1>Loan Applications</h1></div>
+            <div class="brand"><i class="fas fa-th-large inl-1"></i><h1>Loan Applications</h1></div>
             <div class="controls">
-                <a href="/" class="btn btn-verify" title="Verify documents"><i class="fas fa-check-circle"></i> Verify documents</a>
+                <button id="backupBtn" class="btn btn-ghost inl-1" title="Backup & Restore Database">
+                    <i class="fas fa-database"></i> <span class="btn-text">Backup</span>
+                </button>
+                <button id="paidRecordsBtn" class="btn btn-ghost inl-1" title="View Paid Records">
+                    <i class="fas fa-check-double"></i> <span class="btn-text">Paid Records</span>
+                </button>
+                {% if current_role == 'admin' %}
+                <a href="/admin/users-page" class="btn approval-btn" title="Review new user registrations">
+                    <i class="fas fa-user-shield"></i> <span class="btn-text">Approvals</span>
+                    {% if pending_users_count > 0 %}<span class="approval-badge">{{ pending_users_count }}</span>{% endif %}
+                </a>
+                <a href="/admin/reports-page" class="btn approval-btn" title="View generated reports">
+                    <i class="fas fa-file-pdf"></i> <span class="btn-text">Reports</span>
+                </a>
+                <a href="#loan-applications-table" class="btn approval-btn" title="Review loan applications">
+                    <i class="fas fa-file-signature"></i> <span class="btn-text">Loan Review</span>
+                    {% if pending_loan_count > 0 %}<span class="approval-badge">{{ pending_loan_count }}</span>{% endif %}
+                </a>
+                {% endif %}
+                <a href="/" class="btn btn-verify" title="Verify documents"><i class="fas fa-check-circle"></i> <span class="btn-text">Verify</span></a>
                 <button id="themeToggleBtn" class="btn btn-ghost" title="Toggle theme"><i id="themeIcon" class="fas fa-sun"></i></button>
-                <button id="logoutBtn" class="btn btn-primary"><i class="fas fa-sign-out-alt"></i> Logout</button>
+                <button id="logoutBtn" class="btn btn-primary"><i class="fas fa-sign-out-alt"></i> <span class="btn-text">Logout</span></button>
             </div>
         </div>
 
-        <div class="card">
-            <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+        <div class="card" id="loan-applications-table">
+            <div class="inl-1">
                 <div>
-                    <div style="color:var(--muted);font-size:13px">Overview</div>
-                    <div style="display:flex;gap:12px;margin-top:10px" class="stats">
-                        <div class="stat"><div class="label">Total Applications</div><div class="value" id="stat-total">{{ applications|length }}</div></div>
-                        <div class="stat"><div class="label">Recent</div><div class="value" id="stat-recent">{{ applications[:5]|length }}</div></div>
+                    <div class="inl-1">Overview</div>
+                    {% if current_role == 'admin' and pending_users_count > 0 %}
+                    <div class="approval-banner">
+                        <div>
+                            <strong><i class="fas fa-bell"></i> {{ pending_users_count }} new account{{ 's' if pending_users_count != 1 else '' }} waiting for approval</strong>
+                            <span>Open the Approvals page to approve or disable newly registered accounts.</span>
+                        </div>
+                        <a href="/admin/users-page" class="btn btn-primary"><i class="fas fa-arrow-right"></i> Review</a>
+                    </div>
+                    {% endif %}
+                    {% if current_role == 'admin' and pending_loan_count > 0 %}
+                    <div class="approval-banner inl-1">
+                        <div>
+                            <strong><i class="fas fa-file-signature"></i> {{ pending_loan_count }} loan application{{ 's' if pending_loan_count != 1 else '' }} waiting for review</strong>
+                            <span>Approve or reject them from the action buttons in the table.</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    <div class="inl-1" class="stats">
+                        <div class="stat"><div class="label">Active Loans</div><div class="value" id="stat-total">{{ applications|length }}</div></div>
+                        <div class="stat inl-1">
+                            <div class="label inl-1">Overdue</div>
+                            <div class="value inl-1" id="stat-overdue">0</div>
+                        </div>
+                        <div class="stat inl-1" id="stat-paid-container">
+                            <div class="label inl-1">Fully Paid</div>
+                            <div class="value inl-1" id="stat-paid">0</div>
+                        </div>
+                        <div class="stat">
+                            <div class="label">Total Outstanding</div>
+                            <div class="value inl-1" id="stat-outstanding">PHP 0.00</div>
+                        </div>
                     </div>
                 </div>
 
-                <div style="min-width:320px">
+                <div class="inl-1">
                     <div class="search-row">
-                        <div class="search"><i class="fas fa-search" style="color:var(--muted);margin-right:8px"></i><input id="searchInput" placeholder="Search by name, contact or id..."></div>
+                        <div class="search"><i class="fas fa-search inl-1"></i><input id="searchInput" placeholder="Search by name, contact or id..."></div>
                         <div class="pill">Showing <span id="shownCount">{{ applications|length }}</span></div>
                     </div>
                 </div>
@@ -101,7 +412,7 @@
                 <table>
                     <thead>
                         <tr>
-                            <th style="width:70px">ID</th>
+                            <th class="inl-1">ID</th>
                             <th>Timestamp</th>
                             <th>Full Name</th>
                             <th>Contact</th>
@@ -111,12 +422,15 @@
                             <th>Months</th>
                             <th>Interest %</th>
                             <th>Monthly</th>
-                            <th style="width:160px">Actions</th>
+                            <th>Status</th>
+                            <th>Recommendation</th>
+                            <th>Risk</th>
+                            <th class="inl-1">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="appsTable">
                         {% for a in applications %}
-                        <tr data-app-id="{{ a.id }}">
+                        <tr data-app-id="{{ a.id }}" data-recommendation="{{ a.recommendation }}" data-start-date="{{ a.start_date or a.timestamp }}" data-months="{{ a.months }}" data-monthly="{{ a.monthly_payment }}" data-total-paid="{{ a.total_paid }}" class="{% if a.is_overdue %}overdue-row{% endif %}">
                             <td>{{ a.id }}</td>
                             <td class="cell-timestamp">{{ a.timestamp }}</td>
                             <td class="cell-fullname">{{ a.full_name }}</td>
@@ -127,12 +441,40 @@
                             <td class="cell-months">{{ a.months }}</td>
                             <td class="cell-interest">{{ a.interest_rate }}</td>
                             <td class="cell-monthly">{{ "PHP {:,.2f}".format(a.monthly_payment) }}</td>
+                            <td class="cell-status">
+                                {% if a.is_overdue %}
+                                <span class="overdue-badge"><i class="fas fa-exclamation-circle"></i> {{ a.months_overdue }} mo overdue</span>
+                                {% else %}
+                                <span class="on-time-badge"><i class="fas fa-check-circle"></i> On Time</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if a.recommendation == 'approved' %}
+                                <span class="on-time-badge"><i class="fas fa-thumbs-up"></i> Approved</span>
+                                {% elif a.recommendation == 'rejected' %}
+                                <span class="overdue-badge"><i class="fas fa-times-circle"></i> Rejected</span>
+                                {% else %}
+                                <span class="pill"><i class="fas fa-hourglass-half"></i> Pending</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="inl-1">
+                                    <span class="pill">{{ a.risk_level|title }} ({{ '%.1f'|format(a.risk_score) }})</span>
+                                    <span class="inl-1">{{ '%.1f'|format(a.confidence_score) }}% conf | {{ a.fraud_flag_count }} flags</span>
+                                </div>
+                            </td>
                             <td>
                                 <div class="row-actions">
-                                    <button class="btn btn-ghost btn-edit" data-id="{{ a.id }}"><i class="fas fa-edit"></i> Edit</button>
-                                    <button class="btn btn-ghost btn-view-payments" data-id="{{ a.id }}"><i class="fas fa-list"></i> View</button>
-                                    <button class="btn btn-ghost btn-pay" data-id="{{ a.id }}"><i class="fas fa-credit-card"></i> Pay</button>
-                                    <button class="btn btn-ghost btn-delete" data-id="{{ a.id }}"><i class="fas fa-trash-alt"></i> Delete</button>
+                                    {% if current_role == 'admin' %}
+                                    <button class="btn btn-ghost btn-loan-decision" data-id="{{ a.id }}" data-action="approve" title="{% if a.recommendation in ['approved', 'rejected'] %}Decision already recorded{% else %}Approve loan{% endif %}" {% if a.recommendation in ['approved', 'rejected'] %}disabled{% endif %}><i class="fas fa-check"></i></button>
+                                    <button class="btn btn-ghost btn-loan-decision" data-id="{{ a.id }}" data-action="reject" title="{% if a.recommendation in ['approved', 'rejected'] %}Decision already recorded{% else %}Reject loan{% endif %}" {% if a.recommendation in ['approved', 'rejected'] %}disabled{% endif %}><i class="fas fa-times"></i></button>
+                                    {% endif %}
+                                    <button class="btn btn-ghost btn-edit" data-id="{{ a.id }}" title="Edit loan application" aria-label="Edit loan application"><i class="fas fa-edit"></i></button>
+                                    <button class="btn btn-ghost btn-view-payments" data-id="{{ a.id }}" title="View Payments"><i class="fas fa-list"></i></button>
+                                    {% if a.recommendation == 'approved' %}
+                                    <button class="btn btn-ghost btn-pay" data-id="{{ a.id }}" title="Make Payment"><i class="fas fa-credit-card"></i></button>
+                                    {% endif %}
+                                    <button class="btn btn-ghost btn-delete" data-id="{{ a.id }}" title="Delete"><i class="fas fa-trash-alt"></i></button>
                                 </div>
                             </td>
                         </tr>
@@ -142,8 +484,180 @@
             </div>
         </div>
 
+        <!-- Charts Section -->
+        <div class="charts-section">
+            <div class="chart-card">
+                <div class="chart-title"><i class="fas fa-chart-pie"></i> Loan Status Distribution</div>
+                <div class="chart-container"><canvas id="statusChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title"><i class="fas fa-chart-bar"></i> Monthly Collections</div>
+                <div class="chart-container"><canvas id="collectionsChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title"><i class="fas fa-chart-line"></i> Payment Trends</div>
+                <div class="chart-container"><canvas id="trendsChart"></canvas></div>
+            </div>
+        </div>
+
     </div>
-    <footer class="site-footer" style="text-align:center;color:var(--muted);margin-top:14px;padding:12px 0">©Authentication System, All rights reserved 2025</footer>
+    <footer class="site-footer inl-1">©Authentication System, All rights reserved 2025</footer>
+
+    <!-- Payment Modal -->
+    <div id="paymentModal" class="modal-backdrop inl-1" aria-hidden="true">
+        <div class="modal-box inl-1" role="dialog" aria-modal="true">
+            <div id="paymentModalTitle" class="inl-1"><i class="fas fa-credit-card"></i> Make Payment</div>
+            
+            <div class="inl-1">
+                <div class="inl-1">Borrower</div>
+                <div id="paymentBorrowerName" class="inl-1"></div>
+            </div>
+            
+            <div class="payment-type-toggle">
+                <button class="payment-type-btn active" data-type="monthly"><i class="fas fa-calendar-alt"></i> Monthly</button>
+                <button class="payment-type-btn" data-type="full"><i class="fas fa-check-double"></i> Full Balance</button>
+                <button class="payment-type-btn" data-type="custom"><i class="fas fa-edit"></i> Custom</button>
+            </div>
+            
+            <div id="customAmountGroup" class="payment-input-group inl-1">
+                <label for="paymentCustomAmount">Enter Amount (PHP)</label>
+                <input type="number" id="paymentCustomAmount" placeholder="0.00" min="0" step="0.01">
+            </div>
+            
+            <div class="payment-input-group">
+                <label for="paymentPayer">Paid By (optional)</label>
+                <input type="text" id="paymentPayer" placeholder="Enter payer name">
+            </div>
+            
+            <div class="payment-summary">
+                <div class="payment-summary-row">
+                    <span class="inl-1">Monthly Payment:</span>
+                    <span id="paymentMonthlyAmount">PHP 0.00</span>
+                </div>
+                <div class="payment-summary-row">
+                    <span class="inl-1">Current Balance:</span>
+                    <span id="paymentBalanceAmount">PHP 0.00</span>
+                </div>
+                <div class="payment-summary-row total">
+                    <span id="paymentSummaryDesc">1 Month Payment</span>
+                    <span id="paymentSummaryAmount" class="inl-1">PHP 0.00</span>
+                </div>
+                <div class="payment-summary-row">
+                    <span class="inl-1">New Balance:</span>
+                    <span id="paymentNewBalance">PHP 0.00</span>
+                </div>
+                <div id="paymentFullPaidNote" class="inl-1">
+                    <i class="fas fa-check-circle"></i> Loan will be fully paid!
+                </div>
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="document.getElementById('paymentModal').style.display='none'">Cancel</button>
+                <button id="paymentSubmitBtn" class="btn btn-primary"><i class="fas fa-check"></i> Confirm Payment</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Receipt Modal -->
+    <div id="receiptModal" class="modal-backdrop inl-1" aria-hidden="true">
+        <div class="modal-box no-print inl-1" role="dialog" aria-modal="true">
+            <div id="receiptContent" class="receipt-container"></div>
+            <div class="inl-1" class="no-print">
+                <button id="printReceiptBtn" class="btn btn-primary"><i class="fas fa-print"></i> Print Receipt</button>
+                <button id="receiptModalClose" class="btn btn-ghost inl-1">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Password modal markup -->
+    <div id="passwordModal" class="modal-backdrop" aria-hidden="true">
+        <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="passwordModalTitle">
+            <div id="passwordModalTitle" class="inl-1">Admin Password</div>
+            <div id="passwordModalMessage" class="inl-1">Enter admin password</div>
+            <input id="passwordModalInput" class="modal-input" type="password" autocomplete="current-password" />
+            <div class="modal-actions">
+                <button id="passwordModalCancel" class="btn btn-ghost">Cancel</button>
+                <button id="passwordModalOk" class="btn btn-primary">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payments modal markup -->
+    <div id="paymentsModal" class="modal-backdrop inl-1" aria-hidden="true">
+        <div class="modal-box inl-1" role="dialog" aria-modal="true" aria-labelledby="paymentsModalTitle">
+            <div id="paymentsModalTitle" class="inl-1">Payments for Application <span id="paymentsAppId"></span></div>
+            <div id="paymentsList" class="inl-1">Loading...</div>
+            <div class="modal-actions">
+                <button id="paymentsModalClose" class="btn btn-ghost">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Paid Records Archive modal markup -->
+    <div id="paidRecordsModal" class="modal-backdrop inl-1" aria-hidden="true">
+        <div class="modal-box inl-1" role="dialog" aria-modal="true" aria-labelledby="paidRecordsModalTitle">
+            <div class="inl-1">
+                <div id="paidRecordsModalTitle" class="inl-1">
+                    <i class="fas fa-check-double"></i> Fully Paid Loans Archive
+                </div>
+                <button id="paidRecordsModalClose" class="btn btn-ghost inl-1" onclick="document.getElementById('paidRecordsModal').style.display='none'"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="paidRecordsList" class="inl-1">Loading...</div>
+        </div>
+    </div>
+
+    <!-- Database Backup/Restore Modal -->
+    <div id="backupModal" class="modal-backdrop inl-1" aria-hidden="true">
+        <div class="modal-box inl-1" role="dialog" aria-modal="true">
+            <div class="inl-1">
+                <div class="inl-1">
+                    <i class="fas fa-database"></i> Database Backup & Restore
+                </div>
+                <button class="btn btn-ghost inl-1" onclick="document.getElementById('backupModal').style.display='none'"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <!-- Database Info -->
+            <div id="dbInfo" class="inl-1">
+                <div class="inl-1">Database Statistics</div>
+                <div class="inl-1">
+                    <div><span class="inl-1">Active Loans:</span> <strong id="dbActiveLoans">-</strong></div>
+                    <div><span class="inl-1">Payments:</span> <strong id="dbPayments">-</strong></div>
+                    <div><span class="inl-1">Archived:</span> <strong id="dbArchived">-</strong></div>
+                    <div><span class="inl-1">File Size:</span> <strong id="dbFileSize">-</strong></div>
+                    <div class="inl-1"><span class="inl-1">Last Modified:</span> <strong id="dbLastMod">-</strong></div>
+                </div>
+            </div>
+
+            <!-- Backup Section -->
+            <div class="inl-1">
+                <div class="inl-1"><i class="fas fa-download"></i> Create Backup</div>
+                <p class="inl-1">Download a copy of your database for safekeeping.</p>
+                <button id="downloadBackupBtn" class="btn inl-1">
+                    <i class="fas fa-download"></i> Download Backup
+                </button>
+            </div>
+
+            <!-- Restore Section -->
+            <div class="inl-1">
+                <div class="inl-1"><i class="fas fa-upload"></i> Restore from Backup</div>
+                <p class="inl-1">
+                    <i class="fas fa-exclamation-triangle inl-1"></i> 
+                    Warning: This will replace ALL current data with the backup data.
+                </p>
+                <div class="inl-1">
+                    <label class="inl-1">Select backup file (.db)</label>
+                    <input type="file" id="restoreFileInput" accept=".db" class="inl-1">
+                </div>
+                <div class="inl-1">
+                    <label class="inl-1">Admin Password (required)</label>
+                    <input type="password" id="restorePasswordInput" placeholder="Enter admin password" class="inl-1">
+                </div>
+                <button id="restoreBackupBtn" class="btn inl-1">
+                    <i class="fas fa-upload"></i> Restore Database
+                </button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // Initialize theme
@@ -283,39 +797,237 @@
             }catch(e){console.error(e);alert('Update failed')}
         }));
 
-        // Pay 1 month handler
-        document.querySelectorAll('.btn-pay').forEach(btn=>btn.addEventListener('click', async function(){
+        document.querySelectorAll('.btn-loan-decision').forEach(btn=>btn.addEventListener('click', async function(){
+            const id = this.dataset.id;
+            const action = this.dataset.action;
+            const label = action === 'approve' ? 'approve' : 'reject';
+            if(!confirm('Are you sure you want to ' + label + ' loan application #' + id + '?')) return;
+            const pwd = await showPasswordModal('Enter admin password to ' + label + ' this loan:');
+            if(pwd===null) return;
+            const ok = await authorizeAdmin(pwd);
+            if(!ok){ alert('Invalid admin password'); return; }
+            try{
+                const r = await fetch('/admin/loan-applications/' + id + '/decision', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password: pwd, action})});
+                const j = await r.json();
+                if(r.ok && j.success){
+                    alert('Loan application ' + label + 'd');
+                    window.location.reload();
+                } else { alert('Failed: ' + (j.message || 'unknown')); }
+            }catch(e){console.error(e);alert('Decision update failed')}
+        }));
+
+        // ============ PAYMENT MODAL SYSTEM ============
+        let currentPaymentAppId = null;
+        let currentPaymentMonthly = 0;
+        let currentPaymentBalance = 0;
+
+        function showPaymentModal(appId, monthlyAmount, balance, fullName) {
+            currentPaymentAppId = appId;
+            currentPaymentMonthly = monthlyAmount;
+            currentPaymentBalance = balance;
+            
+            const modal = document.getElementById('paymentModal');
+            document.getElementById('paymentModalTitle').innerHTML = `<i class="fas fa-credit-card"></i> Payment for #${appId}`;
+            document.getElementById('paymentBorrowerName').textContent = fullName;
+            document.getElementById('paymentMonthlyAmount').textContent = 'PHP ' + monthlyAmount.toLocaleString('en-PH', {minimumFractionDigits:2});
+            document.getElementById('paymentBalanceAmount').textContent = 'PHP ' + balance.toLocaleString('en-PH', {minimumFractionDigits:2});
+            
+            // Reset to monthly payment type
+            document.querySelectorAll('.payment-type-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('.payment-type-btn[data-type="monthly"]').classList.add('active');
+            document.getElementById('customAmountGroup').style.display = 'none';
+            document.getElementById('paymentCustomAmount').value = '';
+            document.getElementById('paymentPayer').value = '';
+            
+            updatePaymentSummary('monthly');
+            modal.style.display = 'flex';
+        }
+
+        function updatePaymentSummary(type) {
+            let amount = 0;
+            let description = '';
+            
+            if(type === 'monthly') {
+                amount = currentPaymentMonthly;
+                description = '1 Month Payment';
+            } else if(type === 'full') {
+                amount = currentPaymentBalance;
+                description = 'Full Balance Payment';
+            } else if(type === 'custom') {
+                amount = parseFloat(document.getElementById('paymentCustomAmount').value) || 0;
+                description = 'Custom Amount';
+            }
+            
+            document.getElementById('paymentSummaryDesc').textContent = description;
+            document.getElementById('paymentSummaryAmount').textContent = 'PHP ' + amount.toLocaleString('en-PH', {minimumFractionDigits:2});
+            
+            const newBalance = currentPaymentBalance - amount;
+            document.getElementById('paymentNewBalance').textContent = 'PHP ' + Math.max(0, newBalance).toLocaleString('en-PH', {minimumFractionDigits:2});
+            
+            if(newBalance <= 0) {
+                document.getElementById('paymentNewBalance').style.color = 'var(--success)';
+                document.getElementById('paymentFullPaidNote').style.display = 'block';
+            } else {
+                document.getElementById('paymentNewBalance').style.color = 'var(--text)';
+                document.getElementById('paymentFullPaidNote').style.display = 'none';
+            }
+        }
+
+        // Payment type toggle
+        document.querySelectorAll('.payment-type-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.payment-type-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                const type = this.dataset.type;
+                document.getElementById('customAmountGroup').style.display = type === 'custom' ? 'block' : 'none';
+                updatePaymentSummary(type);
+            });
+        });
+
+        document.getElementById('paymentCustomAmount').addEventListener('input', () => updatePaymentSummary('custom'));
+
+        // Submit payment
+        document.getElementById('paymentSubmitBtn').addEventListener('click', async function() {
+            const activeType = document.querySelector('.payment-type-btn.active').dataset.type;
+            let amount = 0;
+            let months = 1;
+            
+            if(activeType === 'monthly') {
+                amount = currentPaymentMonthly;
+            } else if(activeType === 'full') {
+                amount = currentPaymentBalance;
+                months = Math.ceil(currentPaymentBalance / currentPaymentMonthly);
+            } else if(activeType === 'custom') {
+                amount = parseFloat(document.getElementById('paymentCustomAmount').value) || 0;
+                if(amount <= 0) {
+                    alert('Please enter a valid amount');
+                    return;
+                }
+                if(amount > currentPaymentBalance) {
+                    if(!confirm('Amount exceeds balance. Proceed anyway?')) return;
+                }
+                months = Math.ceil(amount / currentPaymentMonthly);
+            }
+            
+            const payer = document.getElementById('paymentPayer').value.trim();
+            
+            try {
+                const payload = { months, amount, payer };
+                const r = await fetch('/pay-application/' + currentPaymentAppId, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const j = await r.json();
+
+                if (r.status === 401) {
+                    alert('Session expired. Please log in again.');
+                    window.location.href = '/login';
+                    return;
+                }
+                
+                if(r.ok && j.success) {
+                    document.getElementById('paymentModal').style.display = 'none';
+                    
+                    if(j.fully_paid && j.archived) {
+                        alert('🎉 Congratulations! Loan fully paid!\n\nThis record has been moved to "Paid Records" archive.');
+                        const row = document.querySelector('tr[data-app-id="'+currentPaymentAppId+'"]');
+                        if(row) row.remove();
+                        updateDashboardStats();
+                        loadPaidRecordsCount();
+                        initCharts();
+                        return;
+                    }
+                    
+                    // Show receipt option
+                    if(confirm('Payment of PHP ' + amount.toLocaleString('en-PH',{minimumFractionDigits:2}) + ' recorded!\n\nWould you like to print a receipt?')) {
+                        showReceipt(currentPaymentAppId, j.receipt_id || Date.now(), amount, payer);
+                    }
+                    
+                    // Refresh row data
+                    const row = document.querySelector('tr[data-app-id="'+currentPaymentAppId+'"]');
+                    if(row) {
+                        const resp = await fetch('/payments/' + currentPaymentAppId);
+                        const pj = await resp.json();
+                        if(resp.ok && pj.success) {
+                            const payments = pj.payments || [];
+                            let total = 0;
+                            payments.forEach(p => { total += parseFloat(p.amount_paid) || 0; });
+                            row.querySelector('.cell-total-paid').textContent = 'PHP ' + total.toLocaleString('en-PH', {minimumFractionDigits:2});
+                            const amtText = row.querySelector('.cell-amount').textContent.replace(/[^0-9.\-]/g,'');
+                            const amtVal = parseFloat(amtText) || 0;
+                            const bal = amtVal - total;
+                            row.querySelector('.cell-balance').textContent = 'PHP ' + bal.toLocaleString('en-PH', {minimumFractionDigits:2});
+                        }
+                    }
+                    updateDashboardStats();
+                    initCharts();
+                } else {
+                    alert('Failed to record payment: ' + (j.message || 'unknown'));
+                }
+            } catch(e) {
+                console.error(e);
+                alert('Payment failed');
+            }
+        });
+
+        // Pay button click - show modal
+        document.querySelectorAll('.btn-pay').forEach(btn=>btn.addEventListener('click', function(){
             const id = this.dataset.id;
             const row = document.querySelector('tr[data-app-id="'+id+'"]');
             if(!row) return;
-            // parse monthly amount from row (formatted like 'PHP 1,234.56')
+            
             const monthlyText = row.querySelector('.cell-monthly').textContent || '';
-            const amountNum = parseFloat(monthlyText.replace(/[^0-9.\-]/g,'')) || 0.0;
-            if(!confirm('Record payment of 1 month (amount: PHP ' + amountNum.toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}) + ') for application #' + id + '?')) return;
-            try{
-                const payload = {months: 1, amount: amountNum};
-                const r = await fetch('/pay-application/' + id, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
-                const j = await r.json();
-                if(r.ok && j.success){ 
-                    alert('Payment recorded'); 
-                    // refresh totals in the row
-                    try{
-                        const resp = await fetch('/payments/' + id);
-                        const pj = await resp.json();
-                        if(resp.ok && pj.success){
-                            const payments = pj.payments || [];
-                            let total = 0;
-                            payments.forEach(p=>{ total += parseFloat(p.amount_paid)||0; });
-                            row.querySelector('.cell-total-paid').textContent = 'PHP ' + total.toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2});
-                            const amtText = row.querySelector('.cell-amount').textContent.replace(/[^0-9.\-]/g,'');
-                            const amtVal = parseFloat(amtText)||0;
-                            const bal = amtVal - total;
-                            row.querySelector('.cell-balance').textContent = 'PHP ' + bal.toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2});
-                        }
-                    }catch(e){console.error('Failed to refresh totals', e)}
-                } else { alert('Failed to record payment: ' + (j.message||'unknown')) }
-            }catch(e){console.error(e);alert('Payment failed')}
+            const monthlyAmount = parseFloat(monthlyText.replace(/[^0-9.\-]/g,'')) || 0.0;
+            const balanceText = row.querySelector('.cell-balance').textContent || '';
+            const balance = parseFloat(balanceText.replace(/[^0-9.\-]/g,'')) || 0.0;
+            const fullName = row.querySelector('.cell-fullname').textContent.trim();
+            
+            showPaymentModal(id, monthlyAmount, balance, fullName);
         }));
+
+        // ============ RECEIPT SYSTEM ============
+        function showReceipt(appId, receiptId, amount, payer) {
+            const row = document.querySelector('tr[data-app-id="'+appId+'"]');
+            if(!row) return;
+            
+            const fullName = row.querySelector('.cell-fullname').textContent.trim();
+            const contact = row.querySelector('.cell-contact').textContent.trim();
+            const loanAmount = row.querySelector('.cell-amount').textContent.trim();
+            const balance = row.querySelector('.cell-balance').textContent.trim();
+            const timestamp = new Date().toLocaleString('en-PH', {dateStyle:'medium', timeStyle:'short'});
+            
+            const receiptHtml = `
+                <div class="receipt-header">
+                    <h2>PAYMENT RECEIPT</h2>
+                    <p>Loan Management System</p>
+                    <p class="inl-1">Receipt #${receiptId}</p>
+                </div>
+                <div class="receipt-body">
+                    <div class="receipt-row"><span>Date & Time:</span><span>${timestamp}</span></div>
+                    <div class="receipt-row"><span>Application ID:</span><span>#${appId}</span></div>
+                    <div class="receipt-row"><span>Borrower Name:</span><span><strong>${fullName}</strong></span></div>
+                    <div class="receipt-row"><span>Contact:</span><span>${contact}</span></div>
+                    <div class="receipt-row"><span>Loan Amount:</span><span>${loanAmount}</span></div>
+                    <div class="receipt-row highlight"><span>Amount Paid:</span><span><strong class="inl-1">PHP ${amount.toLocaleString('en-PH',{minimumFractionDigits:2})}</strong></span></div>
+                    <div class="receipt-row"><span>Remaining Balance:</span><span>${balance}</span></div>
+                    ${payer ? `<div class="receipt-row"><span>Paid By:</span><span>${payer}</span></div>` : ''}
+                </div>
+                <div class="receipt-footer">
+                    <p>Thank you for your payment!</p>
+                    <p class="inl-1">This receipt serves as proof of payment.</p>
+                </div>
+            `;
+            
+            document.getElementById('receiptContent').innerHTML = receiptHtml;
+            document.getElementById('receiptModal').style.display = 'flex';
+        }
+
+        document.getElementById('printReceiptBtn').addEventListener('click', () => window.print());
+        document.getElementById('receiptModalClose').addEventListener('click', () => {
+            document.getElementById('receiptModal').style.display = 'none';
+        });
 
         // View payments handler & modal
         function showPaymentsModal(appId, paymentsHtml){
@@ -323,7 +1035,7 @@
             const appSpan = document.getElementById('paymentsAppId');
             const list = document.getElementById('paymentsList');
             if(appSpan) appSpan.textContent = appId;
-            if(list) list.innerHTML = paymentsHtml || '<div style="color:var(--muted)">No payments found.</div>';
+            if(list) list.innerHTML = paymentsHtml || '<div class="inl-1">No payments found.</div>';
             if(modal){
                 modal.style.display = 'flex';
                 const closeBtn = document.getElementById('paymentsModalClose');
@@ -340,22 +1052,22 @@
                 if(r.ok && j.success){
                     const payments = j.payments || [];
                     if(payments.length === 0){
-                        showPaymentsModal(appId, '<div style="color:var(--muted)">No payments recorded.</div>');
+                        showPaymentsModal(appId, '<div class="inl-1">No payments recorded.</div>');
                         return;
                     }
-                    let html = '<table style="width:100%;border-collapse:collapse;color:var(--text)">';
-                    html += '<thead><tr><th style="text-align:left;padding:6px">ID</th><th style="text-align:left;padding:6px">Time</th><th style="text-align:left;padding:6px">Months</th><th style="text-align:left;padding:6px">Amount</th><th style="text-align:left;padding:6px">Payer</th></tr></thead><tbody>';
+                    let html = '<table class="inl-1">';
+                    html += '<thead><tr><th class="inl-1">ID</th><th class="inl-1">Time</th><th class="inl-1">Months</th><th class="inl-1">Amount</th><th class="inl-1">Payer</th></tr></thead><tbody>';
                     payments.forEach(p=>{
-                        html += `<tr><td style="padding:6px">${p.id}</td><td style="padding:6px">${p.timestamp}</td><td style="padding:6px">${p.months_paid}</td><td style="padding:6px">PHP ${parseFloat(p.amount_paid).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td style="padding:6px">${p.payer||''}</td></tr>`;
+                        html += `<tr><td class="inl-1">${p.id}</td><td class="inl-1">${p.timestamp}</td><td class="inl-1">${p.months_paid}</td><td class="inl-1">PHP ${parseFloat(p.amount_paid).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td class="inl-1">${p.payer||''}</td></tr>`;
                     });
                     html += '</tbody></table>';
                     showPaymentsModal(appId, html);
                 } else {
-                    showPaymentsModal(appId, '<div style="color:var(--muted)">Failed to load payments.</div>');
+                    showPaymentsModal(appId, '<div class="inl-1">Failed to load payments.</div>');
                 }
             }catch(e){
                 console.error(e);
-                showPaymentsModal(appId, '<div style="color:var(--muted)">Error loading payments.</div>');
+                showPaymentsModal(appId, '<div class="inl-1">Error loading payments.</div>');
             }
         }
 
@@ -366,31 +1078,377 @@
 
         // Close payments modal is attached when modal is shown to ensure element exists
 
+        // ============ PAID RECORDS ARCHIVE ============
+        // Load paid records count on page load
+        async function loadPaidRecordsCount() {
+            try {
+                const r = await fetch('/paid-loans-archive');
+                const j = await r.json();
+                if(r.ok && j.success) {
+                    document.getElementById('stat-paid').textContent = j.count || 0;
+                }
+            } catch(e) { console.error('Failed to load paid records count', e); }
+        }
+        loadPaidRecordsCount();
+
+        // Show paid records modal
+        async function showPaidRecordsModal() {
+            const modal = document.getElementById('paidRecordsModal');
+            const list = document.getElementById('paidRecordsList');
+            if(!modal || !list) return;
+            
+            modal.style.display = 'flex';
+            list.innerHTML = '<div class="inl-1"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+            
+            try {
+                const r = await fetch('/paid-loans-archive');
+                const j = await r.json();
+                if(r.ok && j.success) {
+                    const archive = j.archive || [];
+                    if(archive.length === 0) {
+                        list.innerHTML = '<div class="inl-1"><i class="fas fa-inbox"></i> No fully paid records yet.</div>';
+                        return;
+                    }
+                    
+                    let html = '<table class="inl-1">';
+                    html += '<thead><tr class="inl-1">';
+                    html += '<th class="inl-1">ID</th>';
+                    html += '<th class="inl-1">Name</th>';
+                    html += '<th class="inl-1">Contact</th>';
+                    html += '<th class="inl-1">Loan Amount</th>';
+                    html += '<th class="inl-1">Total Paid</th>';
+                    html += '<th class="inl-1">Paid Date</th>';
+                    html += '<th class="inl-1">Actions</th>';
+                    html += '</tr></thead><tbody>';
+                    
+                    archive.forEach(r => {
+                        const paidDate = new Date(r.paid_date).toLocaleDateString('en-PH', {year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+                        html += `<tr class="inl-1">`;
+                        html += `<td class="inl-1">#${r.original_id}</td>`;
+                        html += `<td class="inl-1">${r.full_name}</td>`;
+                        html += `<td class="inl-1">${r.contact}</td>`;
+                        html += `<td class="inl-1">PHP ${parseFloat(r.amount).toLocaleString('en-PH',{minimumFractionDigits:2})}</td>`;
+                        html += `<td class="inl-1">PHP ${parseFloat(r.total_paid).toLocaleString('en-PH',{minimumFractionDigits:2})}</td>`;
+                        html += `<td class="inl-1">${paidDate}</td>`;
+                        html += `<td class="inl-1"><button class="btn btn-ghost btn-delete-archive inl-1" data-id="${r.id}"><i class="fas fa-trash"></i></button></td>`;
+                        html += `</tr>`;
+                    });
+                    html += '</tbody></table>';
+                    list.innerHTML = html;
+                    
+                    // Attach delete handlers
+                    document.querySelectorAll('.btn-delete-archive').forEach(btn => {
+                        btn.addEventListener('click', async function() {
+                            const id = this.dataset.id;
+                            if(!confirm('Delete this record from archive? This cannot be undone.')) return;
+                            try {
+                                const dr = await fetch('/delete-paid-loan/' + id, {method: 'DELETE'});
+                                const dj = await dr.json();
+                                if(dr.ok && dj.success) {
+                                    showPaidRecordsModal(); // Refresh
+                                    loadPaidRecordsCount();
+                                } else {
+                                    alert('Failed to delete: ' + (dj.message || 'unknown'));
+                                }
+                            } catch(e) { alert('Delete failed'); }
+                        });
+                    });
+                } else {
+                    list.innerHTML = '<div class="inl-1">Failed to load paid records.</div>';
+                }
+            } catch(e) {
+                console.error(e);
+                list.innerHTML = '<div class="inl-1">Error loading paid records.</div>';
+            }
+        }
+
+        document.getElementById('paidRecordsBtn').addEventListener('click', showPaidRecordsModal);
+        document.getElementById('paidRecordsModalClose').addEventListener('click', () => {
+            document.getElementById('paidRecordsModal').style.display = 'none';
+        });
+
+        // ============ DATABASE BACKUP & RESTORE ============
+        document.getElementById('backupBtn').addEventListener('click', async () => {
+            const modal = document.getElementById('backupModal');
+            modal.style.display = 'flex';
+            
+            // Load database info
+            try {
+                const res = await fetch('/database-info');
+                const data = await res.json();
+                if(data.success && data.info) {
+                    document.getElementById('dbActiveLoans').textContent = data.info.active_loans;
+                    document.getElementById('dbPayments').textContent = data.info.payments;
+                    document.getElementById('dbArchived').textContent = data.info.archived_loans;
+                    document.getElementById('dbFileSize').textContent = data.info.file_size_formatted;
+                    document.getElementById('dbLastMod').textContent = data.info.last_modified;
+                }
+            } catch(e) {
+                console.error('Failed to load DB info', e);
+            }
+        });
+
+        // Download backup
+        document.getElementById('downloadBackupBtn').addEventListener('click', () => {
+            window.location.href = '/backup-database';
+        });
+
+        // Restore backup
+        document.getElementById('restoreBackupBtn').addEventListener('click', async () => {
+            const fileInput = document.getElementById('restoreFileInput');
+            const passwordInput = document.getElementById('restorePasswordInput');
+            
+            if(!fileInput.files || !fileInput.files[0]) {
+                alert('Please select a backup file to restore.');
+                return;
+            }
+            
+            if(!passwordInput.value) {
+                alert('Please enter the admin password.');
+                passwordInput.focus();
+                return;
+            }
+            
+            if(!confirm('⚠️ WARNING: This will replace ALL current data!\n\nAre you sure you want to restore from this backup?\n\nA backup of the current database will be created automatically.')) {
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('backup_file', fileInput.files[0]);
+            formData.append('password', passwordInput.value);
+            
+            const btn = document.getElementById('restoreBackupBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Restoring...';
+            btn.disabled = true;
+            
+            try {
+                const res = await fetch('/restore-database', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                
+                if(data.success) {
+                    alert('✅ ' + data.message);
+                    window.location.reload();
+                } else {
+                    alert('❌ Error: ' + data.message);
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            } catch(e) {
+                console.error(e);
+                alert('❌ Failed to restore database. Please try again.');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+
+        // Close backup modal when clicking outside
+        document.getElementById('backupModal').addEventListener('click', (e) => {
+            if(e.target.id === 'backupModal') {
+                document.getElementById('backupModal').style.display = 'none';
+            }
+        });
+
+        // ============ DASHBOARD STATS & OVERDUE TRACKING ============
+        function updateDashboardStats() {
+            let totalOutstanding = 0;
+            let overdueCount = 0;
+            const rows = document.querySelectorAll('#appsTable tr');
+            
+            rows.forEach(row => {
+                const balanceText = row.querySelector('.cell-balance')?.textContent || '';
+                const balance = parseFloat(balanceText.replace(/[^0-9.\-]/g,'')) || 0;
+                totalOutstanding += balance;
+                
+                if(row.classList.contains('overdue-row')) {
+                    overdueCount++;
+                }
+            });
+            
+            document.getElementById('stat-total').textContent = rows.length;
+            document.getElementById('stat-overdue').textContent = overdueCount;
+            document.getElementById('stat-outstanding').textContent = 'PHP ' + totalOutstanding.toLocaleString('en-PH', {minimumFractionDigits:2});
+            document.getElementById('shownCount').textContent = rows.length;
+        }
+
+        // Calculate overdue status for each row on page load
+        function calculateOverdueStatus() {
+            const rows = document.querySelectorAll('#appsTable tr');
+            const now = new Date();
+            
+            rows.forEach(row => {
+                const startDateStr = row.dataset.startDate;
+                const months = parseInt(row.dataset.months) || 0;
+                const monthlyPayment = parseFloat(row.dataset.monthly) || 0;
+                const totalPaid = parseFloat(row.dataset.totalPaid) || 0;
+                
+                if(!startDateStr) return;
+                
+                const startDate = new Date(startDateStr);
+                const monthsSinceStart = Math.floor((now - startDate) / (30 * 24 * 60 * 60 * 1000));
+                const expectedPayments = Math.min(monthsSinceStart, months);
+                const expectedAmount = expectedPayments * monthlyPayment;
+                
+                if(totalPaid < expectedAmount && expectedPayments > 0) {
+                    const monthsBehind = Math.ceil((expectedAmount - totalPaid) / monthlyPayment);
+                    row.classList.add('overdue-row');
+                    const statusCell = row.querySelector('.cell-status');
+                    if(statusCell) {
+                        statusCell.innerHTML = `<span class="overdue-badge"><i class="fas fa-exclamation-circle"></i> ${monthsBehind} mo overdue</span>`;
+                    }
+                }
+            });
+            
+            updateDashboardStats();
+        }
+
+        // ============ CHARTS ============
+        let statusChart, collectionsChart, trendsChart;
+
+        async function initCharts() {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const textColor = isDark ? '#94a3b8' : '#64748b';
+            const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+            
+            // Fetch chart data from API
+            let chartData = { status: {on_time: 0, overdue: 0}, collections: [], trends: [] };
+            try {
+                const r = await fetch('/dashboard-stats');
+                if(r.ok) {
+                    const j = await r.json();
+                    if(j.success) chartData = j.data;
+                }
+            } catch(e) { console.error('Failed to fetch chart data', e); }
+            
+            // Fallback to counting from DOM
+            if(chartData.status.on_time === 0 && chartData.status.overdue === 0) {
+                const rows = document.querySelectorAll('#appsTable tr');
+                let onTime = 0, overdue = 0;
+                rows.forEach(row => {
+                    if(row.classList.contains('overdue-row')) overdue++;
+                    else onTime++;
+                });
+                chartData.status = { on_time: onTime, overdue };
+            }
+
+            // Status Pie Chart
+            const statusCtx = document.getElementById('statusChart').getContext('2d');
+            if(statusChart) statusChart.destroy();
+            statusChart = new Chart(statusCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['On Time', 'Overdue'],
+                    datasets: [{
+                        data: [chartData.status.on_time, chartData.status.overdue],
+                        backgroundColor: ['#22c55e', '#ef4444'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: textColor } }
+                    }
+                }
+            });
+
+            // Collections Bar Chart
+            const collectionsCtx = document.getElementById('collectionsChart').getContext('2d');
+            if(collectionsChart) collectionsChart.destroy();
+            
+            const collectionLabels = chartData.collections.length > 0 
+                ? chartData.collections.map(c => c.month)
+                : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+            const collectionData = chartData.collections.length > 0
+                ? chartData.collections.map(c => c.amount)
+                : [0, 0, 0, 0, 0, 0];
+            
+            collectionsChart = new Chart(collectionsCtx, {
+                type: 'bar',
+                data: {
+                    labels: collectionLabels,
+                    datasets: [{
+                        label: 'Collections (PHP)',
+                        data: collectionData,
+                        backgroundColor: 'rgba(96, 165, 250, 0.7)',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { 
+                            beginAtZero: true, 
+                            grid: { color: gridColor },
+                            ticks: { color: textColor }
+                        },
+                        x: { 
+                            grid: { display: false },
+                            ticks: { color: textColor }
+                        }
+                    }
+                }
+            });
+
+            // Trends Line Chart
+            const trendsCtx = document.getElementById('trendsChart').getContext('2d');
+            if(trendsChart) trendsChart.destroy();
+            
+            const trendLabels = chartData.trends.length > 0
+                ? chartData.trends.map(t => t.month)
+                : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+            const trendData = chartData.trends.length > 0
+                ? chartData.trends.map(t => t.count)
+                : [0, 0, 0, 0, 0, 0];
+            
+            trendsChart = new Chart(trendsCtx, {
+                type: 'line',
+                data: {
+                    labels: trendLabels,
+                    datasets: [{
+                        label: 'Payments',
+                        data: trendData,
+                        borderColor: '#a78bfa',
+                        backgroundColor: 'rgba(167, 139, 250, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { 
+                            beginAtZero: true, 
+                            grid: { color: gridColor },
+                            ticks: { color: textColor }
+                        },
+                        x: { 
+                            grid: { display: false },
+                            ticks: { color: textColor }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Initialize on page load
+        calculateOverdueStatus();
+        initCharts();
+
+        // Reinitialize charts on theme change
+        document.getElementById('themeToggleBtn').addEventListener('click', () => {
+            setTimeout(initCharts, 100);
+        });
+
     </script>
-
-    <!-- Password modal markup -->
-    <div id="passwordModal" class="modal-backdrop" aria-hidden="true">
-        <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="passwordModalTitle">
-            <div id="passwordModalTitle" style="font-weight:700;margin-bottom:8px">Admin Password</div>
-            <div id="passwordModalMessage" style="color:var(--muted);margin-bottom:8px">Enter admin password</div>
-            <input id="passwordModalInput" class="modal-input" type="password" autocomplete="current-password" />
-            <div class="modal-actions">
-                <button id="passwordModalCancel" class="btn btn-ghost">Cancel</button>
-                <button id="passwordModalOk" class="btn btn-primary">OK</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Payments modal markup -->
-    <div id="paymentsModal" class="modal-backdrop" aria-hidden="true" style="display:none">
-        <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="paymentsModalTitle">
-            <div id="paymentsModalTitle" style="font-weight:700;margin-bottom:8px">Payments for Application <span id="paymentsAppId"></span></div>
-            <div id="paymentsList" style="color:var(--muted);max-height:320px;overflow:auto;margin-bottom:8px">Loading...</div>
-            <div class="modal-actions">
-                <button id="paymentsModalClose" class="btn btn-ghost">Close</button>
-            </div>
-        </div>
-    </div>
-
 </body>
 </html>
+

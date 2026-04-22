@@ -1,0 +1,37 @@
+{
+  "timestamp": "2026-04-20T11:44:20.908651",
+  "full_name": "John Doe",
+  "contact": "09175555555",
+  "amount": 100000.0,
+  "months": 12,
+  "interest_rate": 8.0,
+  "monthly_payment": 8698.842908542198,
+  "employment_status": "employed",
+  "employer_name": "Tech Company",
+  "monthly_income": 50000.0,
+  "other_income": 0.0,
+  "credit_score": 700,
+  "existing_debt": 10000.0,
+  "requested_documents": [
+    "government_id"
+  ],
+  "validation_issues": [
+    "No supporting document file uploaded."
+  ],
+  "recommendation": "approved",
+  "confidence_score": 94.19,
+  "risk_level": "low",
+  "risk_score": 25.51,
+  "fraud_flags": [
+    "No supporting document uploaded for verification."
+  ],
+  "fraud_probability": 35.0,
+  "model_version": "risk_model_v1.0",
+  "decision_explanation": [
+    "Debt-to-income ratio assessed at 0.37",
+    "Credit score considered at 700",
+    "Employment stability class: employed",
+    "Income to loan ratio: 0.500",
+    "Validation raised 1 cautionary issue(s)"
+  ]
+}

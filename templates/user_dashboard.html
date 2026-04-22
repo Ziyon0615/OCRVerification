@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>My Loans - Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root{
+            --bg: #0b1220;
+            --panel: #0f172a;
+            --muted: #94a3b8;
+            --text: #e6eef8;
+            --accent: #60a5fa;
+            --accent-2: #a78bfa;
+            --glass: rgba(255,255,255,0.03);
+            --card-radius: 12px;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #22c55e;
+        }
+        [data-theme="light"]{
+            --bg: #f6f9fc;
+            --panel: #ffffff;
+            --muted: #64748b;
+            --text: #0f172a;
+            --accent: #2563eb;
+            --accent-2: #d946ef;
+            --glass: rgba(0,0,0,0.02);
+            --danger: #dc2626;
+            --warning: #d97706;
+            --success: #16a34a;
+        }
+
+        html,body{min-height:100vh;margin:0;font-family:Inter,system-ui,Segoe UI,Arial;background:var(--bg);color:var(--text);display:flex;flex-direction:column}
+        .wrap{max-width:1200px;margin:28px auto;padding:20px;flex:1}
+
+        .top-row{display:flex;gap:16px;align-items:center;justify-content:space-between;margin-bottom:18px}
+        .brand{display:flex;gap:14px;align-items:center}
+        .brand h1{font-size:20px;margin:0;background:linear-gradient(90deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+
+        .controls{display:flex;gap:10px;align-items:center}
+        .btn{padding:10px 14px;border-radius:10px;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+        .btn-verify{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#07111a;box-shadow:0 8px 20px rgba(96,165,250,0.12)}
+        .btn-ghost{background:transparent;color:var(--muted);border:1px solid rgba(255,255,255,0.04)}
+        .btn-primary{background:var(--accent);color:#062235}
+        .btn:hover{color:var(--text);border-color:rgba(255,255,255,0.1)}
+
+        .card{background:var(--panel);border-radius:var(--card-radius);padding:18px;box-shadow:0 6px 24px rgba(2,6,23,0.6);}
+
+        .user-greeting{color:var(--muted);font-size:14px;margin-bottom:10px}
+        .user-name{color:var(--text);font-weight:600;font-size:16px}
+
+        .stats{display:flex;gap:12px;flex-wrap:wrap}
+        .stat{background:var(--glass);border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:12px 16px;min-width:140px}
+        .stat .label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px}
+        .stat .value{font-size:20px;font-weight:600;margin-top:6px;color:var(--accent)}
+
+        .search-row{display:flex;gap:10px}
+        .search{flex:1;display:flex;align-items:center;background:var(--glass);border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:8px 12px}
+        .search input{background:transparent;border:none;outline:none;color:var(--text);flex:1;font-size:13px}
+        .search input::placeholder{color:var(--muted)}
+        .pill{background:var(--glass);border:1px solid rgba(255,255,255,0.05);padding:6px 12px;border-radius:20px;font-size:12px;color:var(--muted);white-space:nowrap}
+
+        .table-wrap{overflow-x:auto;margin-top:20px}
+        table{width:100%;border-collapse:collapse;font-size:13px}
+        th{background:var(--glass);color:var(--muted);padding:12px;text-align:left;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid rgba(255,255,255,0.05)}
+        td{padding:12px;border-bottom:1px solid rgba(255,255,255,0.02)}
+        tr:hover{background:var(--glass)}
+
+        .on-time-badge{background:linear-gradient(90deg,rgba(34,197,94,0.1),rgba(22,163,74,0.1));color:#22c55e;padding:4px 8px;border-radius:4px;font-size:11px;display:inline-flex;align-items:center;gap:4px;border:1px solid rgba(34,197,94,0.3)}
+        .overdue-badge{background:linear-gradient(90deg,rgba(239,68,68,0.1),rgba(220,38,38,0.1));color:var(--danger);padding:4px 8px;border-radius:4px;font-size:11px;display:inline-flex;align-items:center;gap:4px;border:1px solid rgba(239,68,68,0.3)}
+        .pending-badge{background:linear-gradient(90deg,rgba(245,158,11,0.12),rgba(251,191,36,0.12));color:var(--warning);padding:4px 8px;border-radius:4px;font-size:11px;display:inline-flex;align-items:center;gap:4px;border:1px solid rgba(245,158,11,0.35)}
+        .overdue-row{background:rgba(239,68,68,0.05)}
+
+        .row-actions{display:flex;gap:6px}
+        .btn-edit,.btn-pay,.btn-view-payments{padding:6px 10px;font-size:12px}
+
+        .modal-backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,0.6);z-index:9999}
+        .modal-box{background:var(--panel);padding:18px;border-radius:12px;min-width:320px;box-shadow:0 12px 40px rgba(2,6,23,0.6);color:var(--text)}
+        .modal-title{font-size:16px;font-weight:600;margin-bottom:12px}
+        .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
+        .modal-input{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--text);outline:none;margin-bottom:12px}
+
+        .no-data{text-align:center;padding:40px;color:var(--muted}
+        .no-data i{font-size:48px;opacity:0.3;margin-bottom:12px}
+
+        .charts-section{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:16px;margin-top:16px}
+        .chart-card{background:var(--panel);border-radius:var(--card-radius);padding:16px;box-shadow:0 6px 24px rgba(2,6,23,0.6)}
+        .chart-title{font-weight:600;margin-bottom:12px;display:flex;gap:8px;align-items:center;font-size:13px}
+        .chart-container{height:200px;position:relative}
+
+        .site-footer{text-align:center;color:var(--muted);margin-top:14px;padding:12px 0}
+
+        .success-banner{
+            background:linear-gradient(90deg,rgba(34,197,94,0.12),rgba(16,185,129,0.12));
+            border:1px solid rgba(34,197,94,0.35);
+            color:var(--success);
+            border-radius:10px;
+            padding:12px 14px;
+            margin-bottom:14px;
+            display:flex;
+            align-items:center;
+            gap:8px;
+            font-size:13px;
+        }
+
+        @media(max-width:768px){
+            .controls .btn-text{display:none}
+            table{font-size:11px}
+            th,td{padding:8px}
+            .stat{min-width:100px;padding:10px 12px}
+            .stat .value{font-size:16px}
+        }
+
+        @media(max-height:500px) and (orientation:landscape){
+            .modal-box{max-height:90vh;overflow-y:auto}
+            .chart-container{height:120px}
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        {% if loan_submitted %}
+        <div class="success-banner">
+            <i class="fas fa-check-circle"></i>
+                <span>Your loan application was submitted successfully.</span>
+            </div>
+            {% endif %}
+
+            {% if pending_review_count %}
+            <div class="success-banner" style="background:linear-gradient(90deg,rgba(245,158,11,0.12),rgba(251,191,36,0.12));border:1px solid rgba(245,158,11,0.35);color:var(--warning)">
+                <i class="fas fa-hourglass-half"></i>
+                <span>{{ pending_review_count }} application{{ 's' if pending_review_count != 1 else '' }} waiting for admin review.</span>
+        </div>
+        {% endif %}
+
+        <div class="top-row">
+            <div class="brand">
+                <i class="fas fa-briefcase" style="font-size:20px;color:var(--accent)"></i>
+                <div>
+                    <h1>My Loans</h1>
+                    <div class="user-greeting">Welcome back, <span class="user-name">{{ user_name }}</span></div>
+                </div>
+            </div>
+            <div class="controls">
+                <a href="/user/documents-page" class="btn btn-ghost" title="Upload IDs" style="background:linear-gradient(90deg,#8b5cf6,#7c3aed);color:#fff;border:none;">
+                    <i class="fas fa-id-card"></i> <span class="btn-text">Upload IDs</span>
+                </a>
+                <button id="themeToggleBtn" class="btn btn-ghost" title="Toggle theme"><i id="themeIcon" class="fas fa-sun"></i></button>
+                <button id="logoutBtn" class="btn btn-primary"><i class="fas fa-sign-out-alt"></i> <span class="btn-text">Logout</span></button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
+                <div>
+                    <div style="color:var(--muted);font-size:13px">Overview</div>
+                    <div class="stats">
+                            <div class="stat"><div class="label">My Active Loans</div><div class="value" id="stat-total">{{ active_loan_count }}</div></div>
+                        <div class="stat" style="background:linear-gradient(90deg,rgba(239,68,68,0.1),rgba(220,38,38,0.1));border:1px solid rgba(239,68,68,0.3)">
+                            <div class="label" style="color:var(--danger)">Overdue</div>
+                            <div class="value" id="stat-overdue" style="color:var(--danger)">0</div>
+                        </div>
+                        <div class="stat">
+                            <div class="label">Total Outstanding</div>
+                            <div class="value" id="stat-outstanding" style="font-size:14px">PHP 0.00</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="min-width:280px">
+                    <div class="search-row">
+                        <div class="search"><i class="fas fa-search" style="color:var(--muted);margin-right:8px"></i><input id="searchInput" placeholder="Search by name or amount..."></div>
+                    </div>
+                    <div style="margin-top:8px;text-align:right;color:var(--muted);font-size:12px">Showing <span id="shownCount">{{ applications|length }}</span> loan(s)</div>
+                </div>
+            </div>
+
+            {% if applications %}
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:60px">ID</th>
+                            <th>Applied</th>
+                            <th>Name</th>
+                            <th>Contact</th>
+                            <th>Amount</th>
+                            <th>Paid</th>
+                            <th>Balance</th>
+                            <th>Months</th>
+                            <th>% Rate</th>
+                            <th>Monthly</th>
+                            <th>Status</th>
+                            <th>Decision</th>
+                            <th style="width:140px">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="appsTable">
+                        {% for a in applications %}
+                        <tr data-app-id="{{ a.id }}" data-recommendation="{{ a.recommendation }}" data-start-date="{{ a.start_date or a.timestamp }}" data-months="{{ a.months }}" data-monthly="{{ a.monthly_payment }}" data-total-paid="{{ a.total_paid }}" class="{% if a.is_overdue %}overdue-row{% endif %}">
+                            <td><strong>#{{ a.id }}</strong></td>
+                            <td class="cell-timestamp" style="font-size:11px">{{ a.timestamp[:10] }}</td>
+                            <td><strong>{{ a.full_name }}</strong></td>
+                            <td style="font-size:12px">{{ a.contact }}</td>
+                            <td>PHP {{ "%.2f"|format(a.amount)|replace(".00", "") }}</td>
+                            <td style="color:var(--success)">PHP {{ "%.2f"|format(a.total_paid)|replace(".00", "") }}</td>
+                            <td style="color:var(--accent)"><strong>PHP {{ "%.2f"|format(a.balance)|replace(".00", "") }}</strong></td>
+                            <td>{{ a.months }}</td>
+                            <td>{{ a.interest_rate }}%</td>
+                            <td>PHP {{ "%.2f"|format(a.monthly_payment)|replace(".00", "") }}</td>
+                            <td>
+                                {% if a.is_overdue %}
+                                <span class="overdue-badge"><i class="fas fa-exclamation-circle"></i> {{ a.months_overdue }}mo due</span>
+                                {% else %}
+                                <span class="on-time-badge"><i class="fas fa-check-circle"></i> On Time</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if a.recommendation == 'approved' %}
+                                <span class="on-time-badge"><i class="fas fa-thumbs-up"></i> Approved</span>
+                                {% elif a.recommendation == 'rejected' %}
+                                <span class="overdue-badge"><i class="fas fa-times-circle"></i> Rejected</span>
+                                {% else %}
+                                <span class="pending-badge"><i class="fas fa-hourglass-half"></i> Pending</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="row-actions">
+                                    <button class="btn btn-ghost btn-view-payments" data-id="{{ a.id }}" title="View Payment History"><i class="fas fa-history"></i></button>
+                                    {% if a.recommendation == 'approved' %}
+                                    <button class="btn btn-ghost btn-pay" data-id="{{ a.id }}" title="Make Payment"><i class="fas fa-credit-card"></i></button>
+                                    {% else %}
+                                    <span class="pending-badge"><i class="fas fa-hourglass-half"></i> Awaiting approval</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="no-data">
+                <div><i class="fas fa-inbox"></i></div>
+                <p>You don't have any active loan applications yet.</p>
+                <a href="/loan-application" class="btn btn-verify" style="margin-top:16px"><i class="fas fa-plus-circle"></i> Apply for a Loan</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    <footer class="site-footer">© Cyber-ID Loan Management System 2025</footer>
+
+    <!-- Payment Modal -->
+    <div id="paymentModal" class="modal-backdrop">
+        <div class="modal-box" style="max-width:420px;width:95%">
+            <div class="modal-title"><i class="fas fa-credit-card"></i> Make Payment</div>
+            <form id="paymentForm">
+                <label>Loan ID: <strong id="payLoanId"></strong></label>
+                <input class="modal-input" id="payMonths" type="number" placeholder="Months to pay (default: 1)" value="1" min="1">
+                <input class="modal-input" id="payAmount" type="number" placeholder="Amount to pay" required>
+                <input class="modal-input" id="payPayer" type="text" placeholder="Payer name (optional)">
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-ghost" onclick="document.getElementById('paymentModal').style.display='none'">Cancel</button>
+                    <button type="submit" class="btn btn-verify">Confirm Payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Payments History Modal -->
+    <div id="paymentsModal" class="modal-backdrop">
+        <div class="modal-box" style="max-width:600px;width:95%;max-height:70vh;overflow-y:auto">
+            <div class="modal-title"><i class="fas fa-list"></i> Payment History</div>
+            <div id="paymentsList" style="max-height:45vh;overflow-y:auto"></div>
+            <div class="modal-actions" style="margin-top:16px">
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('paymentsModal').style.display='none'">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Close modals on escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.getElementById('paymentModal').style.display = 'none';
+                document.getElementById('paymentsModal').style.display = 'none';
+            }
+        });
+
+        // Pay button handler
+        document.querySelectorAll('.btn-pay').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const appId = this.dataset.id;
+                const row = document.querySelector(`tr[data-app-id="${appId}"]`);
+                document.getElementById('payLoanId').textContent = appId;
+                document.getElementById('paymentModal').style.display = 'flex';
+                document.getElementById('paymentForm').onsubmit = async (e) => {
+                    e.preventDefault();
+                    const months = parseInt(document.getElementById('payMonths').value) || 1;
+                    const amount = parseFloat(document.getElementById('payAmount').value);
+                    const payer = document.getElementById('payPayer').value;
+                    try {
+                        const res = await fetch(`/pay-application/${appId}`, {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ months, amount, payer })
+                        });
+                        const data = await res.json();
+
+                        if (res.status === 401) {
+                            alert('Session expired. Please log in again.');
+                            window.location.href = '/login';
+                            return;
+                        }
+
+                        alert(data.message);
+                        if (data.success) {
+                            document.getElementById('paymentModal').style.display = 'none';
+                            location.reload();
+                        }
+                    } catch (err) {
+                        alert('Error: ' + err.message);
+                    }
+                };
+            });
+        });
+
+        // View payments button handler
+        document.querySelectorAll('.btn-view-payments').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const appId = this.dataset.id;
+                try {
+                    const res = await fetch(`/payments/${appId}`);
+                    const data = await res.json();
+                    let html = data.payments.length > 0 ?
+                        '<table style="width:100%;font-size:12px"><tr><th>Date</th><th>Months</th><th>Amount</th><th>Payer</th></tr>' +
+                        data.payments.map(p => `<tr><td>${p.timestamp.slice(0,10)}</td><td>${p.months_paid}</td><td>PHP ${p.amount_paid}</td><td>${p.payer || '-'}</td></tr>`).join('') +
+                        '</table>' :
+                        '<p style="color:var(--muted)">No payments made yet.</p>';
+                    document.getElementById('paymentsList').innerHTML = html;
+                    document.getElementById('paymentsModal').style.display = 'flex';
+                } catch (err) {
+                    alert('Error loading payments: ' + err.message);
+                }
+            });
+        });
+
+        // Search filter
+        document.getElementById('searchInput').addEventListener('input', function() {
+            const term = this.value.toLowerCase();
+            let count = 0;
+            document.querySelectorAll('#appsTable tr').forEach(row => {
+                const text = row.textContent.toLowerCase();
+                const match = text.includes(term);
+                row.style.display = match ? '' : 'none';
+                if (match) count++;
+            });
+            document.getElementById('shownCount').textContent = count;
+        });
+
+        // Calculate stats
+        function updateStats() {
+            let totalLoans = 0, overdueLoans = 0, totalOutstanding = 0;
+            document.querySelectorAll('#appsTable tr').forEach(row => {
+                if (row.style.display !== 'none') {
+                    if ((row.dataset.recommendation || '').toLowerCase() === 'approved') {
+                        totalLoans++;
+                        if (row.classList.contains('overdue-row')) overdueLoans++;
+                        const balanceText = row.querySelector('.cell-balance')?.textContent || '0';
+                        const balance = parseFloat(balanceText.replace(/[^\d.]/g, '')) || 0;
+                        totalOutstanding += balance;
+                    }
+                }
+            });
+            document.getElementById('stat-total').textContent = totalLoans;
+            document.getElementById('stat-overdue').textContent = overdueLoans;
+            document.getElementById('stat-outstanding').textContent = 'PHP ' + totalOutstanding.toLocaleString('en-US', {minimumFractionDigits: 2});
+        }
+        updateStats();
+
+        // Logout button
+        document.getElementById('logoutBtn').addEventListener('click', async() => {
+            await fetch('/logout', { method: 'POST' });
+            window.location.href = '/login';
+        });
+
+        // Theme toggle
+        document.getElementById('themeToggleBtn').addEventListener('click', function() {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            const icon = document.getElementById('themeIcon');
+            icon.className = newTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+        });
+
+        // Load saved theme
+        window.addEventListener('load', function() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.getElementById('themeIcon').className = savedTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+        });
+    </script>
+</body>
+</html>

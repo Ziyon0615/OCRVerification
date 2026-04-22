@@ -15,6 +15,30 @@
             <p><strong>Months:</strong> {{ months }}</p>
             <p><strong>Interest Rate (annual):</strong> {{ interest_rate }}%</p>
             <p><strong>Monthly Payment:</strong> {{ monthly_payment }}</p>
+            <p><strong>Recommendation:</strong> {{ recommendation }}</p>
+            <p><strong>Risk Level:</strong> {{ risk_level }}</p>
+            <p><strong>Model Confidence:</strong> {{ confidence_score }}%</p>
+            <p><strong>Fraud Probability:</strong> {{ fraud_probability }}%</p>
+            {% if validation_issues %}
+            <div style="margin-top:10px;background:rgba(245,158,11,0.08);border-left:3px solid #f59e0b;padding:10px;border-radius:6px">
+                <strong>Validation Notes</strong>
+                <ul style="margin:8px 0 0 18px;line-height:1.5">
+                    {% for issue in validation_issues %}
+                    <li>{{ issue }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            {% if decision_explanation %}
+            <div style="margin-top:10px;background:rgba(6,182,212,0.08);border-left:3px solid #06b6d4;padding:10px;border-radius:6px">
+                <strong>Decision Explanation</strong>
+                <ul style="margin:8px 0 0 18px;line-height:1.5">
+                    {% for item in decision_explanation %}
+                    <li>{{ item }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
         </div>
         <div style="margin-top:18px">
             <a href="/" style="padding:10px 14px;background:linear-gradient(90deg,#00f3ff,#ff00e6);color:#001;border-radius:6px;text-decoration:none;font-weight:700;">Back to Dashboard</a>

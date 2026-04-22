@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
@@ -580,6 +580,30 @@
                     </div>
                 </div>
             </div>
+
+            {% if current_role == 'admin' %}
+            <div style="margin: 24px 0; padding: 16px; border: 1px solid var(--border-color); border-radius: 8px; background: rgba(0, 243, 255, 0.05);">
+                <h3 style="color: var(--primary); margin-bottom: 8px;">
+                    <i class="fas fa-user-clock"></i> PENDING APPLICANTS
+                </h3>
+                <p style="margin-top: 6px; color: var(--text-muted); font-size: 0.9rem;">
+                    Select a pending user/applicant to verify uploaded ID(s) and proceed to loan application.
+                </p>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+                    <div>
+                        <label for="pending-applicant-search" style="display:block; margin-bottom: 6px; color: var(--text-muted);">Search Applicant</label>
+                        <input id="pending-applicant-search" type="text" placeholder="Search by name or username" style="width:100%; padding:10px 12px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-main); outline:none;">
+                    </div>
+                    <div>
+                        <label for="pending-applicant-select" style="display:block; margin-bottom: 6px; color: var(--text-muted);">Pending Applicant Dropdown</label>
+                        <select id="pending-applicant-select" style="width:100%; padding:10px 12px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-main); outline:none;">
+                            <option value="">Loading pending applicants...</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="pending-applicant-meta" style="margin-top: 12px; color: var(--text-muted); font-size: 0.9rem;">Loading data...</div>
+            </div>
+            {% endif %}
             
             <!-- REFERENCE CONFIGURATION -->
             <div class="accordion">
@@ -625,8 +649,8 @@
             <!--  
             <div class="preview-container" id="license-preview"></div>
             -->
-            <!-- MULTI DOCUMENT UPLOAD (Drivers, National ID, Passport) -->
-            <h4 style="margin-top:18px; color:var(--text-main);">Multi Document Upload (analyze simultaneously)</h4>
+            <!-- APPLICANT ID UPLOAD (upload at least one) -->
+            <h4 style="margin-top:18px; color:var(--text-main);">Applicant ID Upload (upload at least one valid ID)</h4>
             <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap:12px; margin-top:10px;">
                 <div>
                     <label style="color:var(--text-muted); font-weight:700">Driver's License</label>
@@ -649,9 +673,9 @@
             </div>
 
             <div style="display:flex; gap:10px; margin-top:12px; align-items:center">
-                <button type="button" class="btn btn-primary" id="verify-all-btn"><i class="fas fa-play"></i> VERIFY ALL DOCUMENTS</button>
+                <button type="button" class="btn btn-primary" id="verify-all-btn"><i class="fas fa-play"></i> VERIFY UPLOADED ID(S)</button>
                 <button type="button" class="btn btn-secondary" id="reset-multi-btn"><i class="fas fa-trash"></i> CLEAR</button>
-                <div id="multi-info" style="margin-left:auto;color:var(--text-muted);font-size:0.9rem">After successful verification you'll be redirected to the loan application.</div>
+                <div id="multi-info" style="margin-left:auto;color:var(--text-muted);font-size:0.9rem">Upload one or more applicant IDs. If uploaded IDs are legit, admin can proceed to loan.</div>
             </div>
 
             <!-- ACTION BUTTONS -->
@@ -670,7 +694,7 @@
             <!-- RESULTS SECTION -->
             <div id="result-section"></div>
         </div>
-        <footer style="text-align:center;color:#94a3b8;padding:16px;border-top:1px solid rgba(255,255,255,0.02);">©Authentication System, All rights reserved 2025</footer>
+        <footer style="text-align:center;color:#94a3b8;padding:16px;border-top:1px solid rgba(255,255,255,0.02);">┬⌐Authentication System, All rights reserved 2025</footer>
     </div>
 
     <script>
@@ -753,6 +777,8 @@
 
         // --- TOAST NOTIFICATIONS ---
         const toastContainer = document.getElementById('toast-container');
+        const currentRole = '{{ current_role|default("") }}';
+        let selectedPendingApplicantId = '';
         
         function showToast(message, type = 'info') {
             const toast = document.createElement('div');
@@ -771,6 +797,82 @@
                 toast.style.animation = 'slideIn 0.3s reverse forwards';
                 setTimeout(() => toast.remove(), 300);
             }, 4000);
+        }
+
+        async function loadPendingApplicants(searchValue = '') {
+            if (currentRole !== 'admin') {
+                return;
+            }
+
+            const selectEl = document.getElementById('pending-applicant-select');
+            const metaEl = document.getElementById('pending-applicant-meta');
+            if (!selectEl || !metaEl) {
+                return;
+            }
+
+            try {
+                selectEl.innerHTML = '<option value="">Loading pending applicants...</option>';
+                const response = await fetch(`/admin/pending-applicants?search=${encodeURIComponent(searchValue || '')}`);
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Unable to load pending applicants');
+                }
+
+                const applicants = data.applicants || [];
+                if (!applicants.length) {
+                    selectEl.innerHTML = '<option value="">No pending applicants found</option>';
+                    metaEl.textContent = 'No pending user/applicant available.';
+                    selectedPendingApplicantId = '';
+                    return;
+                }
+
+                selectEl.innerHTML = '<option value="">Select pending applicant</option>' + applicants.map((a) => {
+                    const pendingCount = Number(a.pending_count || 0);
+                    const pendingLabel = pendingCount > 0 ? `Pending loans: ${pendingCount}` : 'Pending account activation';
+                    return `<option value="${a.user_id}">${a.full_name} (@${a.username}) - ${pendingLabel}</option>`;
+                }).join('');
+
+                metaEl.textContent = `${applicants.length} pending applicant(s) found.`;
+            } catch (err) {
+                console.error('Pending applicants load error:', err);
+                selectEl.innerHTML = '<option value="">Error loading applicants</option>';
+                metaEl.textContent = 'Failed to load pending applicants.';
+                selectedPendingApplicantId = '';
+            }
+        }
+
+        function setupPendingApplicantControls() {
+            if (currentRole !== 'admin') {
+                return;
+            }
+
+            const searchEl = document.getElementById('pending-applicant-search');
+            const selectEl = document.getElementById('pending-applicant-select');
+            const metaEl = document.getElementById('pending-applicant-meta');
+            if (!searchEl || !selectEl || !metaEl) {
+                return;
+            }
+
+            let searchDebounce;
+            searchEl.addEventListener('input', () => {
+                clearTimeout(searchDebounce);
+                searchDebounce = setTimeout(() => {
+                    loadPendingApplicants(searchEl.value.trim());
+                }, 300);
+            });
+
+            selectEl.addEventListener('change', () => {
+                const selectedOption = selectEl.options[selectEl.selectedIndex];
+                selectedPendingApplicantId = (selectEl.value || '').trim();
+                if (!selectedPendingApplicantId) {
+                    metaEl.textContent = 'Select a pending applicant before proceeding to loan application.';
+                    return;
+                }
+                metaEl.textContent = `Selected applicant: ${selectedOption.text}`;
+            });
+
+            loadPendingApplicants('');
         }
 
         // --- DOCUMENT TYPE SELECTION ---
@@ -944,7 +1046,7 @@
                             <div style="text-align:center; padding: 20px;">
                                 <i class="fas fa-file-pdf" style="font-size:40px; color:var(--error)"></i>
                                 <p style="margin-top:10px; font-weight:600; color:var(--text-main);">${file.name}</p>
-                                <p style="color:var(--text-muted); font-size:0.9rem;">PDF Document • ${(file.size / 1024).toFixed(0)} KB</p>
+                                <p style="color:var(--text-muted); font-size:0.9rem;">PDF Document ΓÇó ${(file.size / 1024).toFixed(0)} KB</p>
                             </div>`;
                     }
                 }
@@ -1062,7 +1164,7 @@
 
         
 
-        // --- MULTI-DOCUMENT VERIFICATION (concurrent) ---
+        // --- APPLICANT ID VERIFICATION (one or more IDs) ---
         async function runMultiVerify() {
             try {
                 const mapping = {
@@ -1077,15 +1179,15 @@
                     return;
                 }
 
-                const missingFiles = Object.entries(mapping).filter(([k, el]) => !el.files || el.files.length === 0).map(([k]) => k);
-                if (missingFiles.length) {
-                    showToast('Please upload all three documents before verifying: ' + missingFiles.join(', '), 'error');
+                const providedEntries = Object.entries(mapping).filter(([k, el]) => el.files && el.files.length > 0);
+                if (providedEntries.length === 0) {
+                    showToast('Please upload at least one applicant ID before verifying.', 'error');
                     return;
                 }
 
                 loader.style.display = 'flex';
 
-                const requests = Object.entries(mapping).map(async ([docType, inputEl]) => {
+                const requests = providedEntries.map(async ([docType, inputEl]) => {
                     const file = inputEl.files[0];
                     const statusEl = document.getElementById('status_' + docType);
                     const previewEl = document.getElementById('preview_' + docType);
@@ -1126,9 +1228,9 @@
                         }
 
                         let detailHtml = `<div style="padding:10px;border-radius:6px;border:1px solid var(--border-color);background:rgba(0,0,0,0.02)">`;
-                        detailHtml += `<div style="font-weight:700;color:${json.is_authentic ? 'var(--success)' : 'var(--error)'}">${json.is_authentic ? 'Verified' : 'Rejected'} — ${Math.round((json.confidence||0)*10)/10}% confidence</div>`;
+                        detailHtml += `<div style="font-weight:700;color:${json.is_authentic ? 'var(--success)' : 'var(--error)'}">${json.is_authentic ? 'Verified' : 'Rejected'} ΓÇö ${Math.round((json.confidence||0)*10)/10}% confidence</div>`;
                         if (json.comparison_details) {
-                            detailHtml += `<div style="margin-top:6px;color:var(--text-muted)">Visual: ${json.comparison_details.image_similarity || 'N/A'} • Text: ${json.comparison_details.text_similarity || 'N/A'}</div>`;
+                            detailHtml += `<div style="margin-top:6px;color:var(--text-muted)">Visual: ${json.comparison_details.image_similarity || 'N/A'} ΓÇó Text: ${json.comparison_details.text_similarity || 'N/A'}</div>`;
                         }
                         if (json.issues && json.issues.length) {
                             detailHtml += `<div style="margin-top:8px;color:var(--error);font-weight:600">Issues:</div><ul style="margin-left:18px;color:var(--text-main)">`;
@@ -1154,11 +1256,11 @@
                 const results = await Promise.all(requests);
                 loader.style.display = 'none';
 
-                const allOk = results.every(r => r.ok === true);
+                const allOk = results.length > 0 && results.every(r => r.ok === true);
                 const proceedBtn = document.getElementById('proceed-loan-btn');
                 if (allOk) {
                     multiVerifiedAllOk = true;
-                    showToast('All documents verified. You may proceed to the loan application.', 'success');
+                    showToast('Uploaded applicant ID(s) verified. You may proceed to the loan application.', 'success');
                     if (proceedBtn) {
                         proceedBtn.style.display = 'inline-flex';
                         proceedBtn.disabled = false;
@@ -1176,7 +1278,7 @@
 
                 // Show summary
                 resultSection.innerHTML = '<div style="padding:18px;background:rgba(0,0,0,0.03);border-radius:6px;">' +
-                    '<h3 style="color:var(--text-main)">Multi-Document Verification Summary</h3>' +
+                    '<h3 style="color:var(--text-main)">Applicant ID Verification Summary</h3>' +
                     results.map(r => (`<div style="margin-top:8px;color:${r.ok ? 'var(--success)' : 'var(--error)'};font-weight:700">${r.docType.replace(/_/g,' ').toUpperCase()}: ${r.ok ? 'VERIFIED' : (r.error ? 'ERROR' : 'REJECTED')}</div>`)).join('') +
                     '</div>';
                 resultSection.style.display = 'block';
@@ -1193,10 +1295,18 @@
         document.getElementById('verify-all-btn')?.addEventListener('click', runMultiVerify);
         document.getElementById('proceed-loan-btn')?.addEventListener('click', () => {
             if (!multiVerifiedAllOk) {
-                showToast('Please verify all documents before proceeding.', 'error');
+                showToast('Please verify uploaded applicant ID(s) before proceeding.', 'error');
                 return;
             }
-            window.location.href = '/loan-application';
+            let nextUrl = '/loan-application?verified_from_analysis=1';
+            if (currentRole === 'admin') {
+                if (!selectedPendingApplicantId) {
+                    showToast('Please select a pending applicant first.', 'error');
+                    return;
+                }
+                nextUrl += `&applicant_user_id=${encodeURIComponent(selectedPendingApplicantId)}`;
+            }
+            window.location.href = nextUrl;
         });
         document.getElementById('reset-multi-btn')?.addEventListener('click', () => {
             ['drivers_license','national_id','passport'].forEach(dt => {
@@ -1511,6 +1621,9 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Check authentication first
             checkAuthentication();
+
+            // Admin-only pending applicant selector.
+            setupPendingApplicantControls();
             
             // Initialize document type selection
             initDocumentTypeSelection();

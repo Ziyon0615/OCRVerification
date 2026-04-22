@@ -92,52 +92,73 @@
         }
 
         .login-container {
-            width: 100%;
-            max-width: 450px;
-            background: var(--bg-panel);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
+            width: min(100%, 440px);
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.96) 0%, rgba(2, 6, 23, 0.96) 100%);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
             border: 1px solid var(--border-color);
-            border-radius: 12px;
-            box-shadow: 0 0 40px var(--glow-color);
+            border-radius: 22px;
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(0, 243, 255, 0.05) inset;
             overflow: hidden;
             position: relative;
         }
 
-        .login-header {
-            background: linear-gradient(180deg, rgba(0,0,0,0) 0%, var(--glow-color) 100%);
-            padding: 40px 30px;
-            text-align: center;
-            border-bottom: 2px solid var(--border-color);
+        .login-container::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at top, rgba(0, 243, 255, 0.10), transparent 55%);
+            pointer-events: none;
         }
 
-        .login-header i {
-            font-size: 4rem;
-            margin-bottom: 20px;
-            background: -webkit-linear-gradient(var(--primary), var(--secondary));
+        .login-header {
+            position: relative;
+            padding: 38px 34px 26px;
+            text-align: center;
+            border-bottom: 1px solid rgba(0, 243, 255, 0.14);
+            background: linear-gradient(180deg, rgba(0, 243, 255, 0.08) 0%, rgba(0, 0, 0, 0) 100%);
+        }
+
+        .login-header .header-icon {
+            width: 84px;
+            height: 84px;
+            margin: 0 auto 18px;
+            border-radius: 24px;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(135deg, rgba(0, 243, 255, 0.18), rgba(255, 0, 230, 0.16));
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            box-shadow: 0 0 40px rgba(0, 243, 255, 0.14);
+        }
+
+        .login-header .header-icon i {
+            font-size: 2.4rem;
             background: linear-gradient(var(--primary), var(--secondary));
             background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             color: transparent;
+            margin: 0;
         }
 
         .login-header h1 {
             font-family: 'Chakra Petch', sans-serif;
             font-weight: 700;
             font-size: 2rem;
-            color: var(--primary);
-            text-shadow: 0 0 10px var(--glow-color);
-            margin-bottom: 10px;
+            color: var(--text-main);
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
         }
 
         .login-header p {
             color: var(--text-muted);
             font-size: 0.95rem;
+            line-height: 1.5;
         }
 
         .login-form {
-            padding: 40px;
+            position: relative;
+            padding: 28px 34px 18px;
         }
 
         .form-group {
@@ -188,8 +209,39 @@
             color: var(--text-muted);
         }
 
+        .password-toggle-btn {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--primary);
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.3s;
+            padding: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .password-toggle-btn:hover {
+            color: var(--secondary);
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .input-with-icon.password-wrapper {
+            position: relative;
+        }
+
+        .input-with-icon.password-wrapper .form-input {
+            padding-right: 50px;
+        }
+
         .login-btn {
             width: 100%;
+            max-width: 100%;
             padding: 16px;
             background: linear-gradient(45deg, var(--primary), var(--secondary));
             border: none;
@@ -207,6 +259,10 @@
             transition: all 0.3s;
             text-transform: uppercase;
             letter-spacing: 1px;
+        }
+
+        .login-btn i {
+            font-size: 1rem;
         }
 
         .login-btn:hover {
@@ -234,24 +290,12 @@
         }
 
         .login-footer {
+            position: relative;
             text-align: center;
-            padding: 20px;
+            padding: 18px 24px 24px;
             color: var(--text-muted);
-            font-size: 0.85rem;
-            border-top: 1px solid var(--border-color);
-        }
-
-        .security-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(57, 255, 20, 0.1);
-            color: var(--success);
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-family: 'Chakra Petch', sans-serif;
-            margin-top: 10px;
+            font-size: 0.9rem;
+            border-top: 1px solid rgba(0, 243, 255, 0.12);
         }
 
         /* Animation for login */
@@ -283,20 +327,24 @@
 
         @media (max-width: 480px) {
             .login-form {
-                padding: 30px 20px;
+                padding: 24px 20px 16px;
             }
             
             .login-header {
-                padding: 30px 20px;
+                padding: 28px 20px 20px;
             }
             
             .login-header h1 {
-                font-size: 1.7rem;
+                font-size: 1.6rem;
             }
             
             .theme-toggle-wrapper {
                 top: 15px;
                 right: 15px;
+            }
+
+            .login-container {
+                border-radius: 18px;
             }
         }
     </style>
@@ -311,64 +359,61 @@
 
     <div class="login-container">
         <div class="login-header">
-            <i class="fas fa-fingerprint pulse"></i>
-            <h1>SECURE ACCESS</h1>
-            <p>CYBER-ID VERIFIER v3.1</p>
-            <div class="security-badge">
-                <i class="fas fa-shield-alt"></i>
-                <span>SECURE CONNECTION ESTABLISHED</span>
+            <div class="header-icon">
+                <i class="fas fa-fingerprint"></i>
             </div>
+            <h1>Login</h1>
+            <p>Access Your Account</p>
         </div>
-        
+
         <form id="loginForm" class="login-form">
             <div class="form-group">
-                <label for="username">
-                    <i class="fas fa-user"></i> ACCESS ID
-                </label>
+                <label for="username">Username</label>
                 <div class="input-with-icon">
                     <i class="fas fa-user-circle"></i>
                     <input type="text" 
                            id="username" 
                            class="form-input" 
-                           placeholder="Enter access identifier"
+                           placeholder="Enter your username"
                            required
                            autocomplete="username">
                 </div>
             </div>
-            
+
             <div class="form-group">
-                <label for="password">
-                    <i class="fas fa-key"></i> SECURITY KEY
-                </label>
-                <div class="input-with-icon">
+                <label for="password">Password</label>
+                <div class="input-with-icon password-wrapper">
                     <i class="fas fa-lock"></i>
                     <input type="password" 
                            id="password" 
                            class="form-input" 
-                           placeholder="Enter security key"
+                           placeholder="Enter your password"
                            required
                            autocomplete="current-password">
+                    <button type="button" class="password-toggle-btn" id="passwordToggle" title="Show/Hide Password">
+                        <i class="fas fa-eye"></i>
+                    </button>
                 </div>
-                <div id="passwordError" class="error-message">
+                <div id="passwordError" class="error-message" style="margin-top:10px;">
                     <i class="fas fa-exclamation-circle"></i>
                     <span>Invalid credentials. Access denied.</span>
                 </div>
             </div>
-            
+
             <button type="submit" class="login-btn" id="loginBtn">
-                <i class="fas fa-terminal"></i>
-                <span>INITIATE SESSION</span>
+                <i class="fas fa-sign-in-alt"></i>
+                <span>Login</span>
             </button>
-            
-            <div id="loginStatus" class="error-message" style="color: var(--text-muted); margin-top: 15px;">
+
+            <div id="loginStatus" class="error-message" style="color: var(--text-muted); margin-top: 15px; justify-content:center;">
                 <i class="fas fa-info-circle"></i>
-                <span>Login your credentials</span>
+                <span>Press Enter to login</span>
             </div>
         </form>
-        
+
         <div class="login-footer">
-            <p><i class="fas fa-server"></i> SYSTEM STATUS: <span style="color: var(--success);">ONLINE</span></p>
-            <p style="margin-top: 5px; font-size: 0.8rem;">© 2025 CYBER-ID VERIFIER. RESTRICTED ACCESS.</p>
+            <p>© 2025 Loan Management System. All rights reserved.</p>
+            <p style="margin-top: 10px;">Don't have an account? <a href="/register" style="color: var(--primary); text-decoration: none; font-weight: 600;">Register here</a></p>
         </div>
     </div>
 
@@ -400,6 +445,22 @@
             }
         }
 
+        // --- PASSWORD TOGGLE LOGIC ---
+        const passwordToggle = document.getElementById('passwordToggle');
+        const passwordInput = document.getElementById('password');
+        const passwordIcon = passwordToggle.querySelector('i');
+
+        passwordToggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                passwordIcon.className = 'fas fa-eye-slash';
+            } else {
+                passwordInput.type = 'password';
+                passwordIcon.className = 'fas fa-eye';
+            }
+        });
+
         // --- LOGIN FORM HANDLING ---
         const loginForm = document.getElementById('loginForm');
         
@@ -415,14 +476,14 @@
             
             // Basic validation
             if (!username || !password) {
-                document.getElementById('passwordError').querySelector('span').textContent = 'Please enter both access ID and security key';
+                document.getElementById('passwordError').querySelector('span').textContent = 'Please enter both username and password';
                 document.getElementById('passwordError').classList.add('show');
                 return;
             }
             
             // Show loading state
             const loginBtn = document.getElementById('loginBtn');
-            loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> AUTHENTICATING<span class="loading-dots"></span>';
+            loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in<span class="loading-dots"></span>';
             loginBtn.disabled = true;
             
             try {
@@ -442,7 +503,7 @@
                 
                 if (data.success) {
                     // Successful login
-                    loginBtn.innerHTML = '<i class="fas fa-check"></i> ACCESS GRANTED';
+                    loginBtn.innerHTML = '<i class="fas fa-check"></i> Success!';
                     loginBtn.style.background = 'linear-gradient(45deg, var(--success), #0da271)';
                     
                     // Save theme preference for main app
@@ -456,7 +517,7 @@
                     // Failed login
                     document.getElementById('passwordError').querySelector('span').textContent = data.message || 'Invalid credentials. Access denied.';
                     document.getElementById('passwordError').classList.add('show');
-                    loginBtn.innerHTML = '<i class="fas fa-terminal"></i> INITIATE SESSION';
+                    loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login';
                     loginBtn.disabled = false;
                     
                     // Add shake animation to form
@@ -473,7 +534,7 @@
                 // Network error
                 document.getElementById('passwordError').querySelector('span').textContent = 'Network error. Please try again.';
                 document.getElementById('passwordError').classList.add('show');
-                loginBtn.innerHTML = '<i class="fas fa-terminal"></i> INITIATE SESSION';
+                loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login';
                 loginBtn.disabled = false;
             }
         });

@@ -1,0 +1,75 @@
+{
+  "timestamp": "2026-04-22T14:16:12.985118",
+  "full_name": "aaaa",
+  "contact": "09912345678",
+  "amount": 1000.0,
+  "months": 6,
+  "interest_rate": 5.0,
+  "monthly_payment": 169.105644027989,
+  "employment_status": "employed",
+  "employer_name": "qeqwe",
+  "monthly_income": 22222.0,
+  "other_income": 0.0,
+  "credit_score": 0,
+  "existing_debt": 0.0,
+  "requested_documents": [
+    "government_id"
+  ],
+  "primary_id_type": "drivers_license",
+  "validation_issues": [
+    "Primary ID verification pending: Could not identify document type. Please upload a clearer image."
+  ],
+  "recommendation": "pending",
+  "confidence_score": 99.0,
+  "risk_level": "low",
+  "risk_score": 0.0,
+  "fraud_flags": [],
+  "fraud_probability": 20.0,
+  "model_version": "risk_model_v1.0",
+  "decision_explanation": [
+    "Debt-to-income ratio assessed at 0.01",
+    "Credit score considered at not provided",
+    "Employment stability class: employed",
+    "Income to loan ratio: 22.222"
+  ],
+  "supporting_document_path": "C:\\Users\\Diony\\Documents\\OCRverification - Copy\\uploads\\loan_support_20260422_141612_oic_sig.png",
+  "primary_id_path": "C:\\Users\\Diony\\Documents\\OCRverification - Copy\\uploads\\primary_id_drivers_license_20260422_141612_casher_sig.png",
+  "id_verification": {
+    "is_authentic": false,
+    "confidence": 0.0,
+    "similarity_score": 0.0,
+    "issues": [
+      "Could not identify document type. Please upload a clearer image."
+    ],
+    "analysis": {
+      "document_type_check": "FAILED",
+      "expected_type": "Driver's License",
+      "detected_type": "Unknown",
+      "message": "Could not identify document type. Please upload a clearer image."
+    },
+    "method": "reference_comparison",
+    "comparison_details": {},
+    "has_reference": false,
+    "document_type": "drivers_license"
+  },
+  "verification": {
+    "system_id_verification": {
+      "is_authentic": false,
+      "confidence": 0.0,
+      "similarity_score": 0.0,
+      "issues": [
+        "Could not identify document type. Please upload a clearer image."
+      ],
+      "analysis": {
+        "document_type_check": "FAILED",
+        "expected_type": "Driver's License",
+        "detected_type": "Unknown",
+        "message": "Could not identify document type. Please upload a clearer image."
+      },
+      "method": "reference_comparison",
+      "comparison_details": {},
+      "has_reference": false,
+      "document_type": "drivers_license"
+    }
+  }
+}

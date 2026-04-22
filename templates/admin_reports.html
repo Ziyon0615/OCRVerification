@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Reports - Loan Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #081428;
+            --panel: rgba(10, 20, 38, 0.92);
+            --panel-2: rgba(15, 28, 52, 0.96);
+            --line: rgba(99, 102, 241, 0.25);
+            --text: #e8edff;
+            --muted: #9aa6c8;
+            --accent: #4f46e5;
+            --accent-2: #22d3ee;
+            --danger: #fb7185;
+            --success: #34d399;
+            --shadow: 0 18px 60px rgba(0, 0, 0, 0.4);
+        }
+
+        [data-theme="light"] {
+            --bg: #f2f7ff;
+            --panel: rgba(255, 255, 255, 0.95);
+            --panel-2: rgba(245, 249, 255, 0.98);
+            --line: rgba(79, 70, 229, 0.2);
+            --text: #0f172a;
+            --muted: #64748b;
+            --accent: #3730a3;
+            --accent-2: #0891b2;
+            --danger: #dc2626;
+            --success: #059669;
+            --shadow: 0 14px 35px rgba(15, 23, 42, 0.1);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: 'Inter', sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 8% 0%, rgba(34, 211, 238, 0.15), transparent 28%),
+                radial-gradient(circle at 92% 100%, rgba(79, 70, 229, 0.2), transparent 36%),
+                linear-gradient(180deg, var(--bg), var(--bg));
+        }
+
+        .page {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 26px 20px 36px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-badge {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(135deg, rgba(79, 70, 229, 0.22), rgba(34, 211, 238, 0.22));
+            border: 1px solid var(--line);
+        }
+
+        .brand h1 {
+            margin: 0;
+            font-size: 1.3rem;
+        }
+
+        .brand p {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn {
+            border: 0;
+            border-radius: 11px;
+            padding: 10px 14px;
+            font-size: 0.92rem;
+            color: var(--text);
+            background: var(--panel-2);
+            border: 1px solid var(--line);
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            border: 0;
+            color: #fff;
+        }
+
+        .btn-danger {
+            background: rgba(251, 113, 133, 0.12);
+            color: var(--danger);
+        }
+
+        .hero {
+            background: linear-gradient(180deg, rgba(255,255,255,0.04), transparent), var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            padding: 18px;
+            margin-bottom: 16px;
+        }
+
+        .hero p {
+            margin: 6px 0 0;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 14px;
+        }
+
+        .stat {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 12px;
+        }
+
+        .stat .label {
+            color: var(--muted);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .stat .value {
+            margin-top: 8px;
+            font-size: 1.35rem;
+            font-weight: 700;
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            text-align: left;
+            padding: 14px 16px;
+            color: var(--muted);
+            font-size: 0.78rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--line);
+            background: rgba(255,255,255,0.03);
+        }
+
+        tbody td {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 0.92rem;
+        }
+
+        tbody tr:hover {
+            background: rgba(255,255,255,0.02);
+        }
+
+        .mono {
+            font-family: Consolas, 'Courier New', monospace;
+            font-size: 0.84rem;
+            color: var(--muted);
+            word-break: break-all;
+        }
+
+        .empty {
+            text-align: center;
+            color: var(--muted);
+            padding: 26px;
+        }
+
+        .message {
+            margin-top: 12px;
+            color: var(--muted);
+            min-height: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .topbar { flex-direction: column; align-items: flex-start; }
+            .stats { grid-template-columns: 1fr; }
+            thead { display: none; }
+            table, tbody, tr, td { display: block; width: 100%; }
+            tbody td {
+                display: flex;
+                justify-content: space-between;
+                gap: 12px;
+            }
+            tbody td::before {
+                content: attr(data-label);
+                color: var(--muted);
+                text-transform: uppercase;
+                font-size: 0.74rem;
+                letter-spacing: 0.1em;
+                flex: 0 0 40%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="topbar">
+            <div class="brand">
+                <div class="brand-badge"><i class="fas fa-file-pdf"></i></div>
+                <div>
+                    <h1>Reports Archive</h1>
+                    <p>View and download generated PDF verification and loan reports.</p>
+                </div>
+            </div>
+            <div class="actions">
+                <a class="btn" href="/dashboard"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+                <button class="btn" id="refreshBtn"><i class="fas fa-rotate"></i> Refresh</button>
+                <button class="btn btn-danger" id="cleanupBtn"><i class="fas fa-trash"></i> Cleanup Old</button>
+            </div>
+        </div>
+
+        <div class="hero">
+            <strong>Admin reports center</strong>
+            <p>Use this page to monitor exported report files, check storage usage, and remove reports older than 30 days.</p>
+            <div class="stats">
+                <div class="stat"><div class="label">Total Reports</div><div class="value" id="reportCount">0</div></div>
+                <div class="stat"><div class="label">Total Size</div><div class="value" id="reportSize">0 KB</div></div>
+                <div class="stat"><div class="label">Most Recent</div><div class="value" id="latestReport">-</div></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Filename</th>
+                        <th>Created</th>
+                        <th>Size</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="reportsTable">
+                    <tr><td class="empty" colspan="4">Loading reports...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="message" id="statusMessage"></div>
+    </div>
+
+    <script>
+        const reportsTable = document.getElementById('reportsTable');
+        const statusMessage = document.getElementById('statusMessage');
+        const reportCount = document.getElementById('reportCount');
+        const reportSize = document.getElementById('reportSize');
+        const latestReport = document.getElementById('latestReport');
+
+        function formatBytes(bytes) {
+            if (!bytes || bytes <= 0) return '0 KB';
+            const units = ['B', 'KB', 'MB', 'GB'];
+            let index = 0;
+            let size = Number(bytes);
+            while (size >= 1024 && index < units.length - 1) {
+                size /= 1024;
+                index += 1;
+            }
+            return `${size.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+        }
+
+        function formatDate(isoDate) {
+            if (!isoDate) return '-';
+            const parsed = new Date(isoDate);
+            if (Number.isNaN(parsed.getTime())) return '-';
+            return parsed.toLocaleString();
+        }
+
+        function setStatus(text, isError = false) {
+            statusMessage.textContent = text || '';
+            statusMessage.style.color = isError ? 'var(--danger)' : 'var(--muted)';
+        }
+
+        function renderReports(items) {
+            if (!items || !items.length) {
+                reportsTable.innerHTML = '<tr><td class="empty" colspan="4">No reports found.</td></tr>';
+                reportCount.textContent = '0';
+                reportSize.textContent = '0 KB';
+                latestReport.textContent = '-';
+                return;
+            }
+
+            const totalSize = items.reduce((sum, report) => sum + Number(report.size || 0), 0);
+            const recent = items[0];
+            reportCount.textContent = String(items.length);
+            reportSize.textContent = formatBytes(totalSize);
+            latestReport.textContent = formatDate(recent.created);
+
+            reportsTable.innerHTML = items.map((report) => `
+                <tr>
+                    <td data-label="Filename">
+                        <div>${report.filename}</div>
+                        <div class="mono">${report.path}</div>
+                    </td>
+                    <td data-label="Created">${formatDate(report.created)}</td>
+                    <td data-label="Size">${formatBytes(report.size)}</td>
+                    <td data-label="Action">
+                        <a class="btn btn-primary" href="${report.path}">
+                            <i class="fas fa-download"></i> Download
+                        </a>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadReports() {
+            setStatus('Loading reports...');
+            try {
+                const response = await fetch('/list-reports');
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Failed to load reports');
+                }
+                renderReports(data.reports || []);
+                setStatus(`Loaded ${data.count || 0} report(s).`);
+            } catch (error) {
+                reportsTable.innerHTML = '<tr><td class="empty" colspan="4">Unable to load reports.</td></tr>';
+                setStatus(error.message || 'Unable to load reports.', true);
+            }
+        }
+
+        async function cleanupReports() {
+            const confirmed = window.confirm('Delete reports older than 30 days?');
+            if (!confirmed) return;
+
+            setStatus('Cleaning old reports...');
+            try {
+                const response = await fetch('/cleanup-reports', { method: 'POST' });
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Cleanup failed');
+                }
+                setStatus(data.message || 'Cleanup complete.');
+                await loadReports();
+            } catch (error) {
+                setStatus(error.message || 'Cleanup failed.', true);
+            }
+        }
+
+        document.getElementById('refreshBtn').addEventListener('click', loadReports);
+        document.getElementById('cleanupBtn').addEventListener('click', cleanupReports);
+
+        loadReports();
+    </script>
+</body>
+</html>

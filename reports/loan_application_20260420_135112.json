@@ -1,0 +1,39 @@
+{
+  "timestamp": "2026-04-20T13:51:12.648952",
+  "full_name": "Single Loan User",
+  "contact": "09171234567",
+  "amount": 80000.0,
+  "months": 12,
+  "interest_rate": 8.0,
+  "monthly_payment": 6959.074326833758,
+  "employment_status": "employed",
+  "employer_name": "ACME",
+  "monthly_income": 35000.0,
+  "other_income": 0.0,
+  "credit_score": 0,
+  "existing_debt": 0.0,
+  "requested_documents": [
+    "proof_of_income"
+  ],
+  "primary_id_type": "passport",
+  "validation_issues": [
+    "No supporting document file uploaded."
+  ],
+  "recommendation": "approved",
+  "confidence_score": 94.18,
+  "risk_level": "low",
+  "risk_score": 25.51,
+  "fraud_flags": [
+    "No supporting document uploaded for verification."
+  ],
+  "fraud_probability": 35.0,
+  "model_version": "risk_model_v1.0",
+  "decision_explanation": [
+    "Debt-to-income ratio assessed at 0.20",
+    "Credit score considered at not provided",
+    "Employment stability class: employed",
+    "Income to loan ratio: 0.438",
+    "Validation raised 1 cautionary issue(s)"
+  ],
+  "primary_id_path": "uploads\\primary_id_passport_20260420_135112_id.pdf"
+}

@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Approvals - Loan Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #06111f;
+            --panel: rgba(10, 18, 36, 0.92);
+            --panel-2: rgba(15, 26, 48, 0.98);
+            --line: rgba(102, 214, 255, 0.14);
+            --text: #e5eef8;
+            --muted: #8ca0b8;
+            --accent: #44d7ff;
+            --accent-2: #b66dff;
+            --danger: #ff6b7a;
+            --success: #49e39c;
+            --warning: #ffd166;
+            --shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+        }
+
+        [data-theme="light"] {
+            --bg: #eef4fb;
+            --panel: rgba(255, 255, 255, 0.92);
+            --panel-2: rgba(248, 251, 255, 0.98);
+            --line: rgba(37, 99, 235, 0.12);
+            --text: #102033;
+            --muted: #5f7188;
+            --accent: #2563eb;
+            --accent-2: #7c3aed;
+            --danger: #dc2626;
+            --success: #059669;
+            --warning: #d97706;
+            --shadow: 0 18px 50px rgba(15, 23, 42, 0.12);
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: 'Inter', sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top, rgba(68, 215, 255, 0.18), transparent 30%),
+                radial-gradient(circle at bottom right, rgba(182, 109, 255, 0.12), transparent 24%),
+                linear-gradient(180deg, var(--bg), var(--bg));
+        }
+
+        .page {
+            max-width: 1380px;
+            margin: 0 auto;
+            padding: 28px 20px 40px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .brand-badge {
+            width: 54px;
+            height: 54px;
+            border-radius: 16px;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(135deg, rgba(68, 215, 255, 0.18), rgba(182, 109, 255, 0.18));
+            border: 1px solid var(--line);
+            box-shadow: var(--shadow);
+        }
+
+        .brand h1 {
+            margin: 0;
+            font-size: 1.4rem;
+            letter-spacing: 0.3px;
+        }
+
+        .brand p {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            border: 0;
+            border-radius: 12px;
+            padding: 11px 15px;
+            color: var(--text);
+            background: var(--panel-2);
+            border: 1px solid var(--line);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+        }
+
+        .btn:hover { transform: translateY(-1px); border-color: rgba(68, 215, 255, 0.35); }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: #fff;
+            border: 0;
+        }
+        .btn-success { background: rgba(73, 227, 156, 0.12); color: var(--success); }
+        .btn-danger { background: rgba(255, 107, 122, 0.12); color: var(--danger); }
+        .btn-ghost { color: var(--muted); }
+
+        .hero {
+            background: linear-gradient(180deg, rgba(255,255,255,0.04), transparent), var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            padding: 22px;
+            margin-bottom: 18px;
+        }
+
+        .hero-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+        }
+
+        .hero-copy {
+            color: var(--muted);
+            margin-top: 8px;
+            line-height: 1.6;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+            margin-top: 18px;
+        }
+
+        .stat {
+            padding: 16px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--line);
+        }
+
+        .stat .label {
+            color: var(--muted);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+        }
+
+        .stat .value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-top: 10px;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .search {
+            flex: 1 1 280px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 12px 14px;
+        }
+
+        .search-icon {
+            color: var(--muted);
+        }
+
+        .search input {
+            width: 100%;
+            border: 0;
+            outline: 0;
+            background: transparent;
+            color: var(--text);
+            font-size: 0.95rem;
+        }
+
+        .search input::placeholder { color: var(--muted); }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            text-align: left;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--muted);
+            padding: 16px 18px;
+            background: rgba(255,255,255,0.03);
+            border-bottom: 1px solid var(--line);
+        }
+
+        tbody td {
+            padding: 16px 18px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            vertical-align: top;
+        }
+
+        tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 7px 11px;
+            border-radius: 999px;
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+
+        .pill.pending { background: rgba(255, 209, 102, 0.14); color: var(--warning); }
+        .pill.active { background: rgba(73, 227, 156, 0.14); color: var(--success); }
+        .pill.inactive { background: rgba(255, 107, 122, 0.14); color: var(--danger); }
+
+        .row-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .empty {
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--muted);
+        }
+
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(2, 6, 23, 0.72);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            z-index: 9999;
+        }
+
+        .modal {
+            width: min(100%, 460px);
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 22px;
+            box-shadow: var(--shadow);
+            padding: 20px;
+        }
+
+        .modal h2 {
+            margin: 0 0 8px;
+            font-size: 1.25rem;
+        }
+
+        .modal p {
+            margin: 0 0 16px;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        .field {
+            margin-bottom: 14px;
+        }
+
+        .field label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text);
+            font-size: 0.92rem;
+            font-weight: 600;
+        }
+
+        .field input {
+            width: 100%;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: rgba(255,255,255,0.04);
+            color: var(--text);
+            padding: 12px 14px;
+            outline: none;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .message {
+            margin: 12px 0 0;
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        @media (max-width: 920px) {
+            .stats { grid-template-columns: 1fr; }
+            .topbar { align-items: flex-start; flex-direction: column; }
+            thead { display: none; }
+            table, tbody, tr, td { display: block; width: 100%; }
+            tbody td {
+                display: flex;
+                justify-content: space-between;
+                gap: 14px;
+            }
+            tbody td::before {
+                content: attr(data-label);
+                color: var(--muted);
+                font-size: 0.78rem;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                flex: 0 0 42%;
+            }
+            .row-actions { justify-content: flex-end; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="topbar">
+            <div class="brand">
+                <div class="brand-badge"><i class="fas fa-user-check"></i></div>
+                <div>
+                    <h1>Account Approvals</h1>
+                    <p>Review pending registrations and activate approved users.</p>
+                </div>
+            </div>
+            <div class="actions">
+                <a class="btn btn-ghost" href="/dashboard"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+                <a class="btn btn-ghost" href="/admin/reports-page"><i class="fas fa-file-pdf"></i> Reports</a>
+                <button class="btn btn-ghost" id="refreshBtn"><i class="fas fa-rotate"></i> Refresh</button>
+            </div>
+        </div>
+
+        <div class="hero">
+            <strong class="hero-title">SQLite-backed user approvals</strong>
+            <div class="hero-copy">
+                New registrations are saved in SQLite as pending accounts. The admin can approve or reject them from this page before they can log in.
+            </div>
+            <div class="stats">
+                <div class="stat"><div class="label">Pending</div><div class="value" id="pendingCount">0</div></div>
+                <div class="stat"><div class="label">Active</div><div class="value" id="activeCount">0</div></div>
+                <div class="stat"><div class="label">Rejected / Disabled</div><div class="value" id="inactiveCount">0</div></div>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <div class="search"><i class="fas fa-search search-icon"></i><input id="searchInput" type="text" placeholder="Search by username or name..."></div>
+            <button class="btn btn-primary" id="loadBtn"><i class="fas fa-sync"></i> Load Users</button>
+        </div>
+
+        <div class="card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>Full Name</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Last Login</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTable">
+                    <tr><td colspan="8" class="empty">Loading accounts...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="message" id="statusMessage"></div>
+    </div>
+
+    <div class="modal-backdrop" id="approvalModalBackdrop">
+        <div class="modal">
+            <h2 id="modalTitle">Approve account</h2>
+            <p id="modalText">Enter your admin password to confirm this action.</p>
+            <div class="field">
+                <label for="adminPassword">Admin Password</label>
+                <input id="adminPassword" type="password" placeholder="Enter admin password">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" id="cancelModalBtn" type="button">Cancel</button>
+                <button class="btn btn-primary" id="confirmActionBtn" type="button">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const usersTable = document.getElementById('usersTable');
+        const statusMessage = document.getElementById('statusMessage');
+        const searchInput = document.getElementById('searchInput');
+        const pendingCount = document.getElementById('pendingCount');
+        const activeCount = document.getElementById('activeCount');
+        const inactiveCount = document.getElementById('inactiveCount');
+        const modalBackdrop = document.getElementById('approvalModalBackdrop');
+        const adminPassword = document.getElementById('adminPassword');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalText = document.getElementById('modalText');
+        const confirmActionBtn = document.getElementById('confirmActionBtn');
+        const cancelModalBtn = document.getElementById('cancelModalBtn');
+        let selectedUserId = null;
+        let selectedAction = null;
+        let allUsers = [];
+
+        function showMessage(message, isError = false) {
+            statusMessage.style.color = isError ? 'var(--danger)' : 'var(--muted)';
+            statusMessage.textContent = message;
+        }
+
+        function statusLabel(user) {
+            if (user.is_active) {
+                return '<span class="pill active"><i class="fas fa-check-circle"></i> Approved</span>';
+            }
+            return '<span class="pill pending"><i class="fas fa-hourglass-half"></i> Pending</span>';
+        }
+
+        function formatDate(value) {
+            if (!value) return 'N/A';
+            try {
+                return new Date(value).toLocaleString();
+            } catch (error) {
+                return value;
+            }
+        }
+
+        function renderUsers(users) {
+            const filtered = users.filter(user => {
+                const term = searchInput.value.trim().toLowerCase();
+                if (!term) return true;
+                return [user.username, user.full_name, user.role].join(' ').toLowerCase().includes(term);
+            });
+
+            pendingCount.textContent = users.filter(user => !user.is_active).length;
+            activeCount.textContent = users.filter(user => user.is_active).length;
+            inactiveCount.textContent = users.filter(user => !user.is_active).length;
+
+            if (!filtered.length) {
+                usersTable.innerHTML = '<tr><td colspan="8" class="empty">No matching accounts found.</td></tr>';
+                return;
+            }
+
+            usersTable.innerHTML = filtered.map(user => `
+                <tr>
+                    <td data-label="ID">${user.id}</td>
+                    <td data-label="Username"><strong>${user.username}</strong></td>
+                    <td data-label="Full Name">${user.full_name || '-'}</td>
+                    <td data-label="Role">${user.role}</td>
+                    <td data-label="Status">${statusLabel(user)}</td>
+                    <td data-label="Created">${formatDate(user.created_at)}</td>
+                    <td data-label="Last Login">${formatDate(user.last_login)}</td>
+                    <td data-label="Actions">
+                        <div class="row-actions">
+                            ${user.is_active ? '' : `<button class="btn btn-success" data-user-id="${user.id}" data-action="approve"><i class="fas fa-check"></i> Approve</button>`}
+                            ${user.is_active ? `<button class="btn btn-danger" data-user-id="${user.id}" data-action="reject"><i class="fas fa-ban"></i> Disable</button>` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadUsers() {
+            showMessage('Loading accounts...');
+            try {
+                const response = await fetch('/admin/users');
+                const data = await response.json();
+                if (!data.success) {
+                    showMessage(data.message || 'Unable to load accounts', true);
+                    return;
+                }
+                allUsers = data.users || [];
+                renderUsers(allUsers);
+                showMessage(`Loaded ${allUsers.length} user account(s).`);
+            } catch (error) {
+                showMessage(`Failed to load accounts: ${error.message}`, true);
+            }
+        }
+
+        function openApprovalModal(userId, action) {
+            selectedUserId = userId;
+            selectedAction = action;
+            adminPassword.value = '';
+            modalTitle.textContent = action === 'approve' ? 'Approve account' : 'Disable account';
+            modalText.textContent = action === 'approve'
+                ? 'This will activate the selected account so the user can log in.'
+                : 'This will disable the selected account and prevent future logins.';
+            modalBackdrop.style.display = 'flex';
+            adminPassword.focus();
+        }
+
+        async function confirmApproval() {
+            if (!selectedUserId || !selectedAction) return;
+            const password = adminPassword.value.trim();
+            if (!password) {
+                showMessage('Admin password is required.', true);
+                return;
+            }
+
+            confirmActionBtn.disabled = true;
+            confirmActionBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing';
+            try {
+                const response = await fetch(`/admin/users/${selectedUserId}/approval`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password, action: selectedAction })
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    showMessage(data.message || 'Action failed', true);
+                    return;
+                }
+                modalBackdrop.style.display = 'none';
+                showMessage(data.message || 'Updated account');
+                await loadUsers();
+            } catch (error) {
+                showMessage(`Action failed: ${error.message}`, true);
+            } finally {
+                confirmActionBtn.disabled = false;
+                confirmActionBtn.innerHTML = 'Confirm';
+            }
+        }
+
+        document.addEventListener('click', (event) => {
+            const button = event.target.closest('button[data-user-id]');
+            if (!button) return;
+            openApprovalModal(button.dataset.userId, button.dataset.action);
+        });
+
+        searchInput.addEventListener('input', () => renderUsers(allUsers));
+        document.getElementById('loadBtn').addEventListener('click', loadUsers);
+        document.getElementById('refreshBtn').addEventListener('click', loadUsers);
+        confirmActionBtn.addEventListener('click', confirmApproval);
+        cancelModalBtn.addEventListener('click', () => { modalBackdrop.style.display = 'none'; });
+        modalBackdrop.addEventListener('click', (event) => {
+            if (event.target === modalBackdrop) {
+                modalBackdrop.style.display = 'none';
+            }
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                modalBackdrop.style.display = 'none';
+            }
+        });
+
+        loadUsers();
+    </script>
+</body>
+</html>
