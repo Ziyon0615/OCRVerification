@@ -474,14 +474,10 @@ for doc_type in DOCUMENT_TYPES:
     folder_path = os.path.join(REFERENCE_BASE_FOLDER, doc_type)
     os.makedirs(folder_path, exist_ok=True)
 
-# Set Tesseract path
-try:
+# Set Tesseract path conditionally based on the operating system
+import sys
+if sys.platform == 'win32':
     pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-except:
-    try:
-        pytesseract.pytesseract.tesseract_cmd = '/usr/bin/tesseract'
-    except:
-        pass
 
 # ============= GLOBAL REFERENCE STORAGE =============
 reference_data = {
