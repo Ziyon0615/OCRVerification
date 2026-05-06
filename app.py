@@ -1,5 +1,8 @@
 from flask import Flask, request, jsonify, render_template, redirect, make_response, send_file, g
-from flask_cors import CORS
+try:
+    from flask_cors import CORS
+except ImportError:
+    CORS = None
 from werkzeug.utils import secure_filename
 import os
 import tempfile
@@ -24,7 +27,8 @@ import difflib
 import sqlite3
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
-CORS(app)
+if CORS:
+    CORS(app)
 
 # Configuration
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
