@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template, redirect, make_response, send_file
+from flask import Flask, request, jsonify, render_template, redirect, make_response, send_file, g
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import os
@@ -42,7 +42,6 @@ DEFAULT_DOC_TYPE = 'drivers_license'
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dev-change-this-secret')
 
 # ============= SESSION MANAGEMENT =============
-active_sessions = {}
 SESSION_TIMEOUT = timedelta(hours=1)
 
 # Role definitions
@@ -65,34 +64,93 @@ def hash_password(password):
     return hashlib.sha256(password.encode('utf-8')).hexdigest()
 
 def generate_session_token(username, role='applicant', full_name=''):
-    """Generate a secure session token"""
+    """Generate a secure session token and store in database"""
     token = secrets.token_urlsafe(32)
-    active_sessions[token] = {
-        'username': username,
-        'role': role,
-        'full_name': full_name,
-        'login_time': datetime.now(),
-        'last_activity': datetime.now()
-    }
+    login_time = datetime.now().isoformat()
+    last_activity = datetime.now().isoformat()
+    
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute('''
+            INSERT INTO sessions (token, username, role, full_name, login_time, last_activity)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (token, username, role, full_name, login_time, last_activity))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Error creating session token: {e}")
+        return None
+    
     return token
 
 def get_active_session(req):
-    """Return session object if session token is valid, else None."""
+    """Return session object if session token is valid, else None (from database)."""
+    if hasattr(g, 'active_session'):
+        return g.active_session
+
     token = req.cookies.get('session_token')
     
-    if token and token in active_sessions:
-        session_data = active_sessions[token]
+    if not token:
+        g.active_session = None
+        return None
+    
+    try:
+        conn = get_db_connection(row_factory=True)
+        c = conn.cursor()
+        c.execute('''
+            SELECT token, username, role, full_name, login_time, last_activity
+            FROM sessions
+            WHERE token = ?
+        ''', (token,))
+        row = c.fetchone()
+        
+        if not row:
+            conn.close()
+            g.active_session = None
+            return None
         
         # Check session timeout
-        if datetime.now() - session_data['last_activity'] > SESSION_TIMEOUT:
-            del active_sessions[token]
-            return False
+        last_activity = datetime.fromisoformat(row['last_activity'])
+        if datetime.now() - last_activity > SESSION_TIMEOUT:
+            # Delete expired session
+            c.execute('DELETE FROM sessions WHERE token = ?', (token,))
+            conn.commit()
+            conn.close()
+            g.active_session = None
+            return None
         
-        # Update last activity
-        session_data['last_activity'] = datetime.now()
-        return session_data
-    
-    return None
+        g.active_session = {
+            'token': row['token'],
+            'username': row['username'],
+            'role': row['role'],
+            'full_name': row['full_name'],
+            'login_time': row['login_time'],
+            'last_activity': row['last_activity']
+        }
+
+        # Update last activity after the token is confirmed. If this write is
+        # temporarily blocked, the already-valid session should not be treated
+        # as logged out.
+        try:
+            new_last_activity = datetime.now().isoformat()
+            c.execute('''
+                UPDATE sessions
+                SET last_activity = ?
+                WHERE token = ?
+            ''', (new_last_activity, token))
+            conn.commit()
+            g.active_session['last_activity'] = new_last_activity
+        except Exception as update_error:
+            print(f"Error updating session activity: {update_error}")
+        finally:
+            conn.close()
+
+        return g.active_session
+    except Exception as e:
+        print(f"Error retrieving session: {e}")
+        g.active_session = None
+        return None
 
 def verify_session(req):
     """Verify if user has a valid session"""
@@ -108,16 +166,19 @@ def require_roles(req, allowed_roles):
     return True, session_data, 200
 
 def cleanup_expired_sessions():
-    """Clean up expired sessions"""
-    current_time = datetime.now()
-    expired_tokens = []
-    
-    for token, session_data in active_sessions.items():
-        if current_time - session_data['last_activity'] > SESSION_TIMEOUT:
-            expired_tokens.append(token)
-    
-    for token in expired_tokens:
-        del active_sessions[token]
+    """Clean up expired sessions from database"""
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        cutoff_time = (datetime.now() - SESSION_TIMEOUT).isoformat()
+        c.execute('DELETE FROM sessions WHERE last_activity < ?', (cutoff_time,))
+        deleted_count = c.rowcount
+        conn.commit()
+        conn.close()
+        if deleted_count > 0:
+            print(f"Cleaned up {deleted_count} expired session(s)")
+    except Exception as e:
+        print(f"Error cleaning up sessions: {e}")
 
 # ============= HELPER FUNCTIONS =============
 def allowed_file(filename):
@@ -137,11 +198,21 @@ for folder in [UPLOAD_FOLDER, REPORTS_FOLDER, os.path.join(BASE_DIR, 'static'), 
 # Path for SQLite DB
 DB_PATH = os.path.join(REPORTS_FOLDER, 'loan_applications.db')
 
+def get_db_connection(row_factory=False):
+    """Create a SQLite connection tuned for deployed multi-request access."""
+    conn = sqlite3.connect(DB_PATH, timeout=15)
+    conn.execute('PRAGMA busy_timeout = 15000')
+    if row_factory:
+        conn.row_factory = sqlite3.Row
+    return conn
+
 def init_db():
     """Initialize SQLite database and create tables if missing."""
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_db_connection()
         c = conn.cursor()
+        c.execute('PRAGMA journal_mode = WAL')
+        c.execute('PRAGMA synchronous = NORMAL')
         c.execute('''
             CREATE TABLE IF NOT EXISTS loan_applications (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -197,6 +268,21 @@ def init_db():
                 payer TEXT
             )
         ''')
+        
+        # Sessions table: store user sessions (persistent across workers)
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                token TEXT UNIQUE,
+                username TEXT,
+                role TEXT,
+                full_name TEXT,
+                login_time TEXT,
+                last_activity TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
         # Fully paid archive table: store completed loan records
         c.execute('''
             CREATE TABLE IF NOT EXISTS paid_loans_archive (
@@ -329,8 +415,7 @@ def init_db():
 def get_model_config():
     """Return currently active model configuration."""
     try:
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
+        conn = get_db_connection(row_factory=True)
         c = conn.cursor()
         c.execute("SELECT * FROM model_registry WHERE status = 'active' ORDER BY id DESC LIMIT 1")
         row = c.fetchone()
@@ -351,8 +436,7 @@ def authenticate_user(username, password):
     if not username or not password:
         return None
     try:
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
+        conn = get_db_connection(row_factory=True)
         c = conn.cursor()
         c.execute('''
             SELECT id, username, password_hash, role, full_name, is_active
@@ -389,7 +473,7 @@ def verify_admin_password(password):
     if not password:
         return False
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_db_connection()
         c = conn.cursor()
         c.execute(
             "SELECT id FROM user_accounts WHERE role = 'admin' AND is_active = 1 AND password_hash = ? LIMIT 1",
@@ -406,7 +490,7 @@ def register_user(username, password, full_name):
     if not username or not password or not full_name:
         return {'success': False, 'message': 'Missing required fields'}
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_db_connection()
         c = conn.cursor()
         
         # Check if username exists
@@ -517,6 +601,12 @@ def login():
         if user:
             # Create session
             session_token = generate_session_token(user['username'], user['role'], user['full_name'])
+            if not session_token:
+                return jsonify({
+                    'success': False,
+                    'message': 'Could not create login session. Please try again.'
+                }), 500
+
             redirect_target = '/dashboard' if user['role'] == 'admin' else '/user-dashboard'
             
             response = jsonify({
@@ -533,7 +623,8 @@ def login():
                 session_token,
                 httponly=True,
                 secure=False,  # Set to True in production with HTTPS
-                samesite='Strict',
+                samesite='Lax',
+                path='/',
                 max_age=3600  # 1 hour
             )
             
@@ -566,8 +657,17 @@ def login():
 def logout():
     """Handle user logout"""
     token = request.cookies.get('session_token')
-    if token and token in active_sessions:
-        del active_sessions[token]
+    
+    # Delete session from database
+    if token:
+        try:
+            conn = get_db_connection()
+            c = conn.cursor()
+            c.execute('DELETE FROM sessions WHERE token = ?', (token,))
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"Error deleting session: {e}")
 
     # If client expects JSON, return JSON. If it's a browser form, redirect to login.
     is_json = request.is_json or request.headers.get('Accept', '').find('application/json') != -1
@@ -576,7 +676,7 @@ def logout():
     else:
         response = redirect('/login')
 
-    response.set_cookie('session_token', '', expires=0)
+    response.set_cookie('session_token', '', expires=0, path='/', samesite='Lax')
     return response
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -637,13 +737,14 @@ def session_info():
     """Get session information"""
     session_data = get_active_session(request)
     if session_data:
-        time_remaining = SESSION_TIMEOUT - (datetime.now() - session_data['last_activity'])
+        last_activity = datetime.fromisoformat(session_data['last_activity'])
+        time_remaining = SESSION_TIMEOUT - (datetime.now() - last_activity)
         return jsonify({
             'authenticated': True,
             'username': session_data['username'],
             'role': session_data.get('role'),
             'full_name': session_data.get('full_name'),
-            'login_time': session_data['login_time'].isoformat(),
+            'login_time': session_data['login_time'],
             'session_timeout_minutes': int(time_remaining.total_seconds() / 60)
         })
     
