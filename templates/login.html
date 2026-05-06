@@ -499,9 +499,17 @@
                     })
                 });
                 
-                const data = await response.json();
+                let data = {};
+                try {
+                    data = await response.json();
+                } catch (parseError) {
+                    data = {
+                        success: false,
+                        message: `Login failed with server status ${response.status}. Please reload the PythonAnywhere app and try again.`
+                    };
+                }
                 
-                if (data.success) {
+                if (response.ok && data.success) {
                     // Successful login
                     loginBtn.innerHTML = '<i class="fas fa-check"></i> Success!';
                     loginBtn.style.background = 'linear-gradient(45deg, var(--success), #0da271)';
@@ -515,7 +523,7 @@
                     }, 800);
                 } else {
                     // Failed login
-                    document.getElementById('passwordError').querySelector('span').textContent = data.message || 'Invalid credentials. Access denied.';
+                    document.getElementById('passwordError').querySelector('span').textContent = data.message || `Login failed with server status ${response.status}`;
                     document.getElementById('passwordError').classList.add('show');
                     loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login';
                     loginBtn.disabled = false;

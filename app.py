@@ -211,8 +211,12 @@ def init_db():
     try:
         conn = get_db_connection()
         c = conn.cursor()
-        c.execute('PRAGMA journal_mode = WAL')
-        c.execute('PRAGMA synchronous = NORMAL')
+        try:
+            c.execute('PRAGMA journal_mode = WAL')
+            c.execute('PRAGMA synchronous = NORMAL')
+        except sqlite3.Error as pragma_error:
+            print(f"SQLite tuning skipped: {pragma_error}")
+
         c.execute('''
             CREATE TABLE IF NOT EXISTS loan_applications (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
