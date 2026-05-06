@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: ocrverification
+    runtime: docker
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /login
+    envVars:
+      - key: FLASK_SECRET_KEY
+        generateValue: true
+      - key: PYTHONUNBUFFERED
+        value: "1"

@@ -32,9 +32,9 @@ if CORS:
 
 # Configuration
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
+UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', os.path.join(BASE_DIR, 'uploads'))
 REFERENCE_BASE_FOLDER = os.path.join(BASE_DIR, 'references')
-REPORTS_FOLDER = os.path.join(BASE_DIR, 'reports')
+REPORTS_FOLDER = os.environ.get('REPORTS_FOLDER', os.path.join(BASE_DIR, 'reports'))
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf'}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 
@@ -4173,4 +4173,5 @@ if __name__ == '__main__':
     print("Press Ctrl+C to stop the server")
     print("=" * 70)
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=True, host='0.0.0.0', port=port)

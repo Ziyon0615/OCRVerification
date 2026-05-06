@@ -1,0 +1,12 @@
+.git
+.venv
+venv
+__pycache__
+*.pyc
+.pytest_cache
+uploads/*
+user_documents/*
+reports/*.db
+reports/*.db-*
+reports/*.pdf
+reports/loan_application_*.json
