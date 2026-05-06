@@ -253,6 +253,16 @@
         .modal-box{background:var(--panel);padding:18px;border-radius:12px;min-width:320px;box-shadow:0 12px 40px rgba(2,6,23,0.6);color:var(--text)}
         .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
         .modal-input{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--text);outline:none}
+        .modal-title{font-weight:700;font-size:18px;margin-bottom:16px;color:var(--text)}
+        .modal-panel{background:var(--glass);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;margin-bottom:16px;color:var(--text)}
+        .modal-label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+        .payment-note{display:none;margin-top:8px;padding:8px;background:rgba(34,197,94,0.15);border-radius:6px;text-align:center;color:var(--success);font-size:12px}
+        .receipt-actions{display:flex;gap:10px;justify-content:center;margin-top:12px}
+        .payments-list{color:var(--text);max-height:320px;overflow:auto;margin-bottom:8px}
+        .payments-empty{padding:12px;color:var(--muted)}
+        .payments-table{width:100%;border-collapse:collapse;color:var(--text);font-size:13px}
+        .payments-table th,.payments-table td{padding:8px;border-bottom:1px solid rgba(255,255,255,0.08);text-align:left}
+        .payments-table th{color:var(--muted);font-weight:600}
     
         /* Auto-migrated inline styles */
         .inl-1{border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px}
@@ -504,13 +514,13 @@
     <footer class="site-footer inl-1">©Authentication System, All rights reserved 2025</footer>
 
     <!-- Payment Modal -->
-    <div id="paymentModal" class="modal-backdrop inl-1" aria-hidden="true">
-        <div class="modal-box inl-1" role="dialog" aria-modal="true">
-            <div id="paymentModalTitle" class="inl-1"><i class="fas fa-credit-card"></i> Make Payment</div>
+    <div id="paymentModal" class="modal-backdrop" aria-hidden="true">
+        <div class="modal-box" role="dialog" aria-modal="true">
+            <div id="paymentModalTitle" class="modal-title"><i class="fas fa-credit-card"></i> Make Payment</div>
             
-            <div class="inl-1">
-                <div class="inl-1">Borrower</div>
-                <div id="paymentBorrowerName" class="inl-1"></div>
+            <div class="modal-panel">
+                <span class="modal-label">Borrower</span>
+                <div id="paymentBorrowerName"></div>
             </div>
             
             <div class="payment-type-toggle">
@@ -519,7 +529,7 @@
                 <button class="payment-type-btn" data-type="custom"><i class="fas fa-edit"></i> Custom</button>
             </div>
             
-            <div id="customAmountGroup" class="payment-input-group inl-1">
+            <div id="customAmountGroup" class="payment-input-group" style="display:none">
                 <label for="paymentCustomAmount">Enter Amount (PHP)</label>
                 <input type="number" id="paymentCustomAmount" placeholder="0.00" min="0" step="0.01">
             </div>
@@ -531,22 +541,22 @@
             
             <div class="payment-summary">
                 <div class="payment-summary-row">
-                    <span class="inl-1">Monthly Payment:</span>
+                    <span>Monthly Payment:</span>
                     <span id="paymentMonthlyAmount">PHP 0.00</span>
                 </div>
                 <div class="payment-summary-row">
-                    <span class="inl-1">Current Balance:</span>
+                    <span>Current Balance:</span>
                     <span id="paymentBalanceAmount">PHP 0.00</span>
                 </div>
                 <div class="payment-summary-row total">
                     <span id="paymentSummaryDesc">1 Month Payment</span>
-                    <span id="paymentSummaryAmount" class="inl-1">PHP 0.00</span>
+                    <span id="paymentSummaryAmount">PHP 0.00</span>
                 </div>
                 <div class="payment-summary-row">
-                    <span class="inl-1">New Balance:</span>
+                    <span>New Balance:</span>
                     <span id="paymentNewBalance">PHP 0.00</span>
                 </div>
-                <div id="paymentFullPaidNote" class="inl-1">
+                <div id="paymentFullPaidNote" class="payment-note">
                     <i class="fas fa-check-circle"></i> Loan will be fully paid!
                 </div>
             </div>
@@ -559,12 +569,12 @@
     </div>
 
     <!-- Receipt Modal -->
-    <div id="receiptModal" class="modal-backdrop inl-1" aria-hidden="true">
-        <div class="modal-box no-print inl-1" role="dialog" aria-modal="true">
+    <div id="receiptModal" class="modal-backdrop" aria-hidden="true">
+        <div class="modal-box no-print" role="dialog" aria-modal="true">
             <div id="receiptContent" class="receipt-container"></div>
-            <div class="inl-1" class="no-print">
+            <div class="receipt-actions no-print">
                 <button id="printReceiptBtn" class="btn btn-primary"><i class="fas fa-print"></i> Print Receipt</button>
-                <button id="receiptModalClose" class="btn btn-ghost inl-1">Close</button>
+                <button id="receiptModalClose" class="btn btn-ghost">Close</button>
             </div>
         </div>
     </div>
@@ -583,10 +593,10 @@
     </div>
 
     <!-- Payments modal markup -->
-    <div id="paymentsModal" class="modal-backdrop inl-1" aria-hidden="true">
-        <div class="modal-box inl-1" role="dialog" aria-modal="true" aria-labelledby="paymentsModalTitle">
-            <div id="paymentsModalTitle" class="inl-1">Payments for Application <span id="paymentsAppId"></span></div>
-            <div id="paymentsList" class="inl-1">Loading...</div>
+    <div id="paymentsModal" class="modal-backdrop" aria-hidden="true">
+        <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="paymentsModalTitle">
+            <div id="paymentsModalTitle" class="modal-title">Payments for Application <span id="paymentsAppId"></span></div>
+            <div id="paymentsList" class="payments-list">Loading...</div>
             <div class="modal-actions">
                 <button id="paymentsModalClose" class="btn btn-ghost">Close</button>
             </div>
@@ -1002,7 +1012,7 @@
                 <div class="receipt-header">
                     <h2>PAYMENT RECEIPT</h2>
                     <p>Loan Management System</p>
-                    <p class="inl-1">Receipt #${receiptId}</p>
+                    <p>Receipt #${receiptId}</p>
                 </div>
                 <div class="receipt-body">
                     <div class="receipt-row"><span>Date & Time:</span><span>${timestamp}</span></div>
@@ -1010,13 +1020,13 @@
                     <div class="receipt-row"><span>Borrower Name:</span><span><strong>${fullName}</strong></span></div>
                     <div class="receipt-row"><span>Contact:</span><span>${contact}</span></div>
                     <div class="receipt-row"><span>Loan Amount:</span><span>${loanAmount}</span></div>
-                    <div class="receipt-row highlight"><span>Amount Paid:</span><span><strong class="inl-1">PHP ${amount.toLocaleString('en-PH',{minimumFractionDigits:2})}</strong></span></div>
+                    <div class="receipt-row highlight"><span>Amount Paid:</span><span><strong>PHP ${amount.toLocaleString('en-PH',{minimumFractionDigits:2})}</strong></span></div>
                     <div class="receipt-row"><span>Remaining Balance:</span><span>${balance}</span></div>
                     ${payer ? `<div class="receipt-row"><span>Paid By:</span><span>${payer}</span></div>` : ''}
                 </div>
                 <div class="receipt-footer">
                     <p>Thank you for your payment!</p>
-                    <p class="inl-1">This receipt serves as proof of payment.</p>
+                    <p>This receipt serves as proof of payment.</p>
                 </div>
             `;
             
@@ -1035,7 +1045,7 @@
             const appSpan = document.getElementById('paymentsAppId');
             const list = document.getElementById('paymentsList');
             if(appSpan) appSpan.textContent = appId;
-            if(list) list.innerHTML = paymentsHtml || '<div class="inl-1">No payments found.</div>';
+            if(list) list.innerHTML = paymentsHtml || '<div class="payments-empty">No payments found.</div>';
             if(modal){
                 modal.style.display = 'flex';
                 const closeBtn = document.getElementById('paymentsModalClose');
@@ -1052,22 +1062,22 @@
                 if(r.ok && j.success){
                     const payments = j.payments || [];
                     if(payments.length === 0){
-                        showPaymentsModal(appId, '<div class="inl-1">No payments recorded.</div>');
+                        showPaymentsModal(appId, '<div class="payments-empty">No payments recorded.</div>');
                         return;
                     }
-                    let html = '<table class="inl-1">';
-                    html += '<thead><tr><th class="inl-1">ID</th><th class="inl-1">Time</th><th class="inl-1">Months</th><th class="inl-1">Amount</th><th class="inl-1">Payer</th></tr></thead><tbody>';
+                    let html = '<table class="payments-table">';
+                    html += '<thead><tr><th>ID</th><th>Time</th><th>Months</th><th>Amount</th><th>Payer</th></tr></thead><tbody>';
                     payments.forEach(p=>{
-                        html += `<tr><td class="inl-1">${p.id}</td><td class="inl-1">${p.timestamp}</td><td class="inl-1">${p.months_paid}</td><td class="inl-1">PHP ${parseFloat(p.amount_paid).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td class="inl-1">${p.payer||''}</td></tr>`;
+                        html += `<tr><td>${p.id}</td><td>${p.timestamp}</td><td>${p.months_paid}</td><td>PHP ${parseFloat(p.amount_paid).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td>${p.payer||''}</td></tr>`;
                     });
                     html += '</tbody></table>';
                     showPaymentsModal(appId, html);
                 } else {
-                    showPaymentsModal(appId, '<div class="inl-1">Failed to load payments.</div>');
+                    showPaymentsModal(appId, '<div class="payments-empty">Failed to load payments.</div>');
                 }
             }catch(e){
                 console.error(e);
-                showPaymentsModal(appId, '<div class="inl-1">Error loading payments.</div>');
+                showPaymentsModal(appId, '<div class="payments-empty">Error loading payments.</div>');
             }
         }
 
