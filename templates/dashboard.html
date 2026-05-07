@@ -1104,6 +1104,7 @@
             const btn = e.target.closest('.btn-verify-proof');
             if(!btn) return;
             const paymentId = btn.dataset.paymentId;
+            const appId = document.getElementById('paymentsAppId')?.textContent || '';
             const pwd = await showPasswordModal('Enter admin password to verify this proof of payment:');
             if(pwd===null) return;
             const notes = prompt('Verification notes (optional):') || '';
@@ -1120,7 +1121,12 @@
                         window.location.reload();
                         return;
                     }
-                    btn.closest('td').innerHTML = '<span class="on-time-badge"><i class="fas fa-check-circle"></i> Verified</span>';
+                    const cell = btn.closest('td');
+                    if(cell){
+                        cell.innerHTML = '<span class="on-time-badge"><i class="fas fa-check-circle"></i> Verified</span>';
+                    } else if(appId){
+                        fetchAndShowPayments(appId);
+                    }
                 } else {
                     alert('Failed: ' + (j.message || 'unknown'));
                 }

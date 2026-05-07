@@ -602,6 +602,17 @@
                     </div>
                 </div>
                 <div id="pending-applicant-meta" style="margin-top: 12px; color: var(--text-muted); font-size: 0.9rem;">Loading data...</div>
+                <div id="applicant-documents-panel" style="display:none; margin-top: 14px; padding: 14px; border: 1px solid var(--border-color); border-radius: 8px; background: rgba(0,0,0,0.08);">
+                    <div style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap;">
+                        <div>
+                            <strong style="color: var(--text-main);"><i class="fas fa-folder-open"></i> Applicant Uploaded Documents</strong>
+                            <div style="color: var(--text-muted); font-size: 0.85rem; margin-top:4px;">Select the ID document(s) uploaded by the applicant. Admin does not need to upload files from this device.</div>
+                        </div>
+                    </div>
+                    <div id="applicant-documents-list" style="margin-top:12px; display:grid; gap:10px;">
+                        <div style="color:var(--text-muted)">Select an applicant to load uploaded documents.</div>
+                    </div>
+                </div>
             </div>
             {% endif %}
             
@@ -650,8 +661,8 @@
             <div class="preview-container" id="license-preview"></div>
             -->
             <!-- APPLICANT ID UPLOAD (upload at least one) -->
-            <h4 style="margin-top:18px; color:var(--text-main);">Applicant ID Upload (upload at least one valid ID)</h4>
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap:12px; margin-top:10px;">
+            <h4 style="margin-top:18px; color:var(--text-main); {% if current_role == 'admin' %}display:none{% endif %}">Applicant ID Upload (upload at least one valid ID)</h4>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap:12px; margin-top:10px; {% if current_role == 'admin' %}display:none{% endif %}">
                 <div>
                     <label style="color:var(--text-muted); font-weight:700">Driver's License</label>
                     <input type="file" id="file_drivers_license" accept="image/*,.pdf" style="margin-top:6px">
@@ -779,6 +790,83 @@
         const toastContainer = document.getElementById('toast-container');
         const currentRole = '{{ current_role|default("") }}';
         let selectedPendingApplicantId = '';
+        let selectedApplicantDocumentIds = new Set();
+        const primaryDocumentTypes = new Set(['drivers_license', 'national_id', 'passport']);
+
+        function formatDocTypeLabel(type) {
+            return (type || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+        }
+
+        function renderApplicantDocuments(documents) {
+            const panel = document.getElementById('applicant-documents-panel');
+            const list = document.getElementById('applicant-documents-list');
+            if (!panel || !list) return;
+
+            panel.style.display = 'block';
+            selectedApplicantDocumentIds = new Set();
+
+            if (!documents.length) {
+                list.innerHTML = '<div style="color:var(--text-muted)">This applicant has not uploaded documents yet.</div>';
+                return;
+            }
+
+            list.innerHTML = documents.map((doc) => {
+                const isPrimary = primaryDocumentTypes.has(doc.document_type);
+                const checkedAttr = isPrimary ? 'checked' : '';
+                const disabledAttr = isPrimary ? '' : 'disabled';
+                const viewLink = doc.file_url ? `<a href="${doc.file_url}" target="_blank" rel="noopener" style="color:var(--primary);font-weight:700">View file</a>` : '<span style="color:var(--text-muted)">No file</span>';
+                if (isPrimary) selectedApplicantDocumentIds.add(String(doc.id));
+                return `
+                    <label style="display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--border-color);border-radius:8px;background:rgba(255,255,255,0.03)">
+                        <input type="checkbox" class="applicant-doc-check" value="${doc.id}" data-type="${doc.document_type}" ${checkedAttr} ${disabledAttr} style="margin-top:4px">
+                        <div style="flex:1">
+                            <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+                                <strong style="color:${isPrimary ? 'var(--text-main)' : 'var(--text-muted)'}">${formatDocTypeLabel(doc.document_type)}</strong>
+                                <span id="admin_doc_status_${doc.id}" style="font-weight:700;color:${doc.verified ? 'var(--success)' : 'var(--text-muted)'}">${doc.verified ? 'Already verified' : (isPrimary ? 'Ready to verify' : 'Supporting document')}</span>
+                            </div>
+                            <div style="color:var(--text-muted);font-size:0.85rem;margin-top:4px">Uploaded: ${doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleString() : 'N/A'} | ${viewLink}</div>
+                            ${!isPrimary ? '<div style="color:var(--text-muted);font-size:0.82rem;margin-top:4px">This file is available for review, but only primary IDs can run authenticity verification.</div>' : ''}
+                            <div id="preview_${doc.document_type}" style="margin-top:8px"></div>
+                            <div id="status_${doc.document_type}" style="margin-top:6px;font-weight:700"></div>
+                        </div>
+                    </label>
+                `;
+            }).join('');
+
+            document.querySelectorAll('.applicant-doc-check').forEach((checkbox) => {
+                checkbox.addEventListener('change', () => {
+                    if (checkbox.checked) selectedApplicantDocumentIds.add(checkbox.value);
+                    else selectedApplicantDocumentIds.delete(checkbox.value);
+                });
+            });
+        }
+
+        async function loadApplicantDocuments(userId) {
+            const panel = document.getElementById('applicant-documents-panel');
+            const list = document.getElementById('applicant-documents-list');
+            if (!panel || !list) return;
+
+            selectedApplicantDocumentIds = new Set();
+            if (!userId) {
+                panel.style.display = 'none';
+                list.innerHTML = '<div style="color:var(--text-muted)">Select an applicant to load uploaded documents.</div>';
+                return;
+            }
+
+            panel.style.display = 'block';
+            list.innerHTML = '<div style="color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i> Loading uploaded documents...</div>';
+            try {
+                const response = await fetch(`/admin/applicant-documents/${encodeURIComponent(userId)}`);
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    list.innerHTML = `<div style="color:var(--error)">Failed to load documents: ${data.message || 'Unknown error'}</div>`;
+                    return;
+                }
+                renderApplicantDocuments(data.documents || []);
+            } catch (error) {
+                list.innerHTML = `<div style="color:var(--error)">Failed to load documents: ${error.message}</div>`;
+            }
+        }
         
         function showToast(message, type = 'info') {
             const toast = document.createElement('div');
@@ -824,6 +912,7 @@
                     selectEl.innerHTML = '<option value="">No pending applicants found</option>';
                     metaEl.textContent = 'No pending user/applicant available.';
                     selectedPendingApplicantId = '';
+                    loadApplicantDocuments('');
                     return;
                 }
 
@@ -867,9 +956,11 @@
                 selectedPendingApplicantId = (selectEl.value || '').trim();
                 if (!selectedPendingApplicantId) {
                     metaEl.textContent = 'Select a pending applicant before proceeding to loan application.';
+                    loadApplicantDocuments('');
                     return;
                 }
                 metaEl.textContent = `Selected applicant: ${selectedOption.text}`;
+                loadApplicantDocuments(selectedPendingApplicantId);
             });
 
             loadPendingApplicants('');
@@ -1167,6 +1258,78 @@
         // --- APPLICANT ID VERIFICATION (one or more IDs) ---
         async function runMultiVerify() {
             try {
+                if (currentRole === 'admin') {
+                    if (!selectedPendingApplicantId) {
+                        showToast('Please select a pending applicant first.', 'error');
+                        return;
+                    }
+
+                    const selectedChecks = Array.from(document.querySelectorAll('.applicant-doc-check:checked'));
+                    if (!selectedChecks.length) {
+                        showToast('Please select at least one uploaded applicant ID to verify.', 'error');
+                        return;
+                    }
+
+                    loader.style.display = 'flex';
+                    const requests = selectedChecks.map(async (checkbox) => {
+                        const docId = checkbox.value;
+                        const docType = checkbox.dataset.type;
+                        const statusEl = document.getElementById('admin_doc_status_' + docId);
+                        if (statusEl) {
+                            statusEl.textContent = 'Verifying...';
+                            statusEl.style.color = 'var(--primary)';
+                        }
+
+                        try {
+                            const res = await fetch(`/admin/user-documents/${encodeURIComponent(docId)}/verify-id`, {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({document_type: docType})
+                            });
+                            const json = await res.json();
+
+                            if (statusEl) {
+                                statusEl.textContent = json.is_authentic ? 'Verified' : 'Rejected';
+                                statusEl.style.color = json.is_authentic ? 'var(--success)' : 'var(--error)';
+                            }
+
+                            return { docType, ok: json.is_authentic === true, detail: json, error: json.message };
+                        } catch (err) {
+                            if (statusEl) {
+                                statusEl.textContent = 'Error';
+                                statusEl.style.color = 'var(--error)';
+                            }
+                            return { docType, ok: false, error: err.message || 'Network error' };
+                        }
+                    });
+
+                    const results = await Promise.all(requests);
+                    loader.style.display = 'none';
+
+                    const allOk = results.length > 0 && results.every(r => r.ok === true);
+                    const proceedBtn = document.getElementById('proceed-loan-btn');
+                    if (allOk) {
+                        multiVerifiedAllOk = true;
+                        showToast('Selected applicant document(s) verified. You may proceed to Loan Review.', 'success');
+                        if (proceedBtn) {
+                            proceedBtn.style.display = 'inline-flex';
+                            proceedBtn.disabled = false;
+                            proceedBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    } else {
+                        multiVerifiedAllOk = false;
+                        if (proceedBtn) { proceedBtn.style.display = 'none'; proceedBtn.disabled = true; }
+                    }
+
+                    resultSection.innerHTML = '<div style="padding:18px;background:rgba(0,0,0,0.03);border-radius:6px;">' +
+                        '<h3 style="color:var(--text-main)">Applicant Uploaded Document Verification Summary</h3>' +
+                        results.map(r => (`<div style="margin-top:8px;color:${r.ok ? 'var(--success)' : 'var(--error)'};font-weight:700">${formatDocTypeLabel(r.docType)}: ${r.ok ? 'VERIFIED' : (r.error ? 'ERROR - ' + r.error : 'REJECTED')}</div>`)).join('') +
+                        '</div>';
+                    resultSection.style.display = 'block';
+                    resultSection.scrollIntoView({ behavior: 'smooth' });
+                    return;
+                }
+
                 const mapping = {
                     'drivers_license': document.getElementById('file_drivers_license'),
                     'national_id': document.getElementById('file_national_id'),

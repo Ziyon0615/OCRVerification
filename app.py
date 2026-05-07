@@ -2940,6 +2940,112 @@ def admin_documents():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
+@app.route('/admin/applicant-documents/<int:user_id>', methods=['GET'])
+def admin_applicant_documents(user_id):
+    """Return documents uploaded by one applicant for admin review."""
+    allowed, auth_result, status = require_roles(request, {'admin'})
+    if not allowed:
+        return auth_result, status
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        c.execute('SELECT id, username, COALESCE(full_name, username) AS full_name FROM user_accounts WHERE id = ? AND role = ?', (user_id, 'applicant'))
+        applicant = c.fetchone()
+        if not applicant:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Applicant not found'}), 404
+
+        c.execute('''
+            SELECT id, document_type, file_path, uploaded_at, verified_by_admin, verification_notes
+            FROM user_documents
+            WHERE user_id = ?
+            ORDER BY uploaded_at DESC
+        ''', (user_id,))
+        rows = c.fetchall()
+        conn.close()
+
+        documents = []
+        for r in rows:
+            file_path = r['file_path'] or ''
+            documents.append({
+                'id': r['id'],
+                'document_type': r['document_type'],
+                'file_path': file_path,
+                'file_url': f"/uploaded-file/{str(file_path).replace(os.sep, '/')}" if file_path else None,
+                'uploaded_at': r['uploaded_at'],
+                'verified': bool(r['verified_by_admin']),
+                'verification_notes': r['verification_notes']
+            })
+
+        return jsonify({
+            'success': True,
+            'applicant': {
+                'id': applicant['id'],
+                'username': applicant['username'],
+                'full_name': applicant['full_name']
+            },
+            'documents': documents
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/admin/user-documents/<int:doc_id>/verify-id', methods=['POST'])
+def admin_verify_user_uploaded_id(doc_id):
+    """Verify an applicant-uploaded ID file without requiring admin local upload."""
+    allowed, auth_result, status = require_roles(request, {'admin'})
+    if not allowed:
+        return auth_result, status
+
+    data = request.get_json() if request.is_json else request.form
+    requested_type = (data.get('document_type') or '').strip()
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        c.execute('SELECT id, user_id, document_type, file_path FROM user_documents WHERE id = ?', (doc_id,))
+        doc = c.fetchone()
+        if not doc:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Document not found'}), 404
+
+        doc_type = requested_type or (doc['document_type'] or '').strip()
+        if doc_type not in DOCUMENT_TYPES:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Only primary ID documents can be verified here'}), 400
+
+        file_path = doc['file_path'] or ''
+        abs_path = os.path.abspath(os.path.join(BASE_DIR, file_path))
+        docs_root = os.path.abspath(os.path.join(BASE_DIR, 'user_documents'))
+        if not (abs_path == docs_root or abs_path.startswith(docs_root + os.sep)) or not os.path.exists(abs_path):
+            conn.close()
+            return jsonify({'success': False, 'message': 'Uploaded document file not found'}), 404
+
+        result = analyze_with_comparison(abs_path, doc_type)
+        is_authentic = bool(result.get('is_authentic'))
+        notes = 'Verified by admin from applicant uploaded document' if is_authentic else '; '.join(result.get('issues') or ['Document was not verified'])
+        c.execute(
+            '''UPDATE user_documents
+               SET verified_by_admin = ?, verification_notes = ?
+               WHERE id = ?''',
+            (1 if is_authentic else 0, notes, doc_id)
+        )
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'document_id': doc_id,
+            'document_type': doc_type,
+            **result
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 @app.route('/admin/document/<int:doc_id>/verify', methods=['POST'])
 def admin_verify_document(doc_id):
     """Admin verifies a user document."""
