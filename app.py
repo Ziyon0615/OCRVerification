@@ -273,9 +273,26 @@ def init_db():
                 timestamp TEXT,
                 months_paid INTEGER,
                 amount_paid REAL,
-                payer TEXT
+                payer TEXT,
+                proof_path TEXT,
+                proof_verified INTEGER DEFAULT 0,
+                proof_verified_at TEXT,
+                proof_verified_by TEXT,
+                proof_notes TEXT
             )
         ''')
+        payment_columns = [
+            ('proof_path', 'TEXT'),
+            ('proof_verified', 'INTEGER DEFAULT 0'),
+            ('proof_verified_at', 'TEXT'),
+            ('proof_verified_by', 'TEXT'),
+            ('proof_notes', 'TEXT')
+        ]
+        for col_name, col_type in payment_columns:
+            try:
+                c.execute(f'ALTER TABLE payments ADD COLUMN {col_name} {col_type}')
+            except sqlite3.OperationalError:
+                pass
         
         # Sessions table: store user sessions (persistent across workers)
         c.execute('''
@@ -375,6 +392,21 @@ def init_db():
                 uploaded_at TEXT,
                 verified_by_admin INTEGER DEFAULT 0,
                 verification_notes TEXT,
+                FOREIGN KEY (user_id) REFERENCES user_accounts(id)
+            )
+        ''')
+
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS loan_agreements (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                application_id INTEGER UNIQUE,
+                user_id INTEGER,
+                agreement_text TEXT,
+                created_at TEXT,
+                signed_by_admin INTEGER DEFAULT 1,
+                signed_at TEXT,
+                status TEXT DEFAULT 'active',
+                FOREIGN KEY (application_id) REFERENCES loan_applications(id),
                 FOREIGN KEY (user_id) REFERENCES user_accounts(id)
             )
         ''')
@@ -557,6 +589,59 @@ def save_user_document(user_id, document_type, file_path):
         return {'success': True, 'document_id': document_id}
     except Exception as e:
         return {'success': False, 'message': str(e)}
+
+def generate_loan_agreement_text(loan_row):
+    """Create a simple loan agreement from an approved application."""
+    amount = float(loan_row['amount'] or 0)
+    monthly = float(loan_row['monthly_payment'] or 0)
+    months = int(loan_row['months'] or 0)
+    interest = float(loan_row['interest_rate'] or 0)
+    total_repayment = monthly * months
+    start_date = (loan_row['start_date'] or datetime.now().isoformat())[:10]
+    return (
+        f"Loan Agreement for {loan_row['full_name']}\n\n"
+        f"Loan ID: #{loan_row['id']}\n"
+        f"Borrower Contact: {loan_row['contact'] or 'N/A'}\n"
+        f"Principal Amount: PHP {amount:,.2f}\n"
+        f"Annual Interest Rate: {interest:.2f}%\n"
+        f"Repayment Term: {months} months\n"
+        f"Estimated Monthly Payment: PHP {monthly:,.2f}\n"
+        f"Estimated Total Repayment: PHP {total_repayment:,.2f}\n"
+        f"Agreement Start Date: {start_date}\n\n"
+        f"The borrower agrees to repay this loan over {months} month(s) according to the monthly payment schedule. "
+        "Payments must be submitted with proof of payment for admin verification. Late or missed payments may mark "
+        "the loan as overdue in the system until the required payment is recorded and verified.\n\n"
+        f"Approved and issued on {datetime.now().strftime('%Y-%m-%d')}."
+    )
+
+def create_or_update_loan_agreement(conn, app_id):
+    """Persist an agreement for an approved loan application."""
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute('SELECT * FROM loan_applications WHERE id = ?', (app_id,))
+    loan_row = c.fetchone()
+    if not loan_row:
+        return None
+
+    agreement_text = generate_loan_agreement_text(loan_row)
+    now = datetime.now().isoformat()
+    c.execute('SELECT id FROM loan_agreements WHERE application_id = ?', (app_id,))
+    existing = c.fetchone()
+    if existing:
+        c.execute(
+            '''UPDATE loan_agreements
+               SET user_id = ?, agreement_text = ?, signed_at = ?, status = 'active'
+               WHERE application_id = ?''',
+            (loan_row['user_id'], agreement_text, now, app_id)
+        )
+    else:
+        c.execute(
+            '''INSERT INTO loan_agreements
+               (application_id, user_id, agreement_text, created_at, signed_by_admin, signed_at, status)
+               VALUES (?, ?, ?, ?, 1, ?, 'active')''',
+            (app_id, loan_row['user_id'], agreement_text, now, now)
+        )
+    return agreement_text
 
 # initialize DB
 init_db()
@@ -2317,10 +2402,6 @@ def loan_application():
             except Exception:
                 pass
 
-        if role == 'admin' and selected_applicant_user_id and verified_from_analysis_post:
-            recommendation = 'approved'
-            app_data['recommendation'] = recommendation
-
         # Save JSON copy (optional backup)
         try:
             filename = os.path.join(REPORTS_FOLDER, f"loan_application_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
@@ -2363,6 +2444,9 @@ def loan_application():
 
     if role == 'applicant':
         return redirect('/user-dashboard?loan_submitted=1')
+
+    if role == 'admin':
+        return redirect('/dashboard?loan_ready=1')
 
     return render_template('loan_confirmation.html', full_name=full_name, contact=contact,
                            amount=f"PHP {amount:,.2f}", months=months,
@@ -2410,6 +2494,7 @@ def dashboard():
 
     session_data = get_active_session(request) or {}
     current_role = session_data.get('role', '')
+    loan_ready = (request.args.get('loan_ready') or '').strip() == '1'
     pending_users_count = 0
     pending_loan_count = 0
 
@@ -2443,24 +2528,39 @@ def dashboard():
 
             # Skip fully paid loans (balance <= 0) - archive them to paid_loans_archive
             if balance <= 0:
-                fully_paid_ids.append(r['id'])
-                # Archive the fully paid loan record
                 try:
-                    paid_date = datetime.now().isoformat()
-                    c.execute('''INSERT INTO paid_loans_archive 
-                                (original_id, timestamp, full_name, contact, amount, months, interest_rate, monthly_payment, total_paid, paid_date, verification)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                              (r['id'], r['timestamp'], r['full_name'], r['contact'], r['amount'], 
-                               r['months'], r['interest_rate'], r['monthly_payment'], total_paid, paid_date,
-                               r['verification'] if 'verification' in r.keys() else None))
-                    # Delete from active tables
-                    c.execute('DELETE FROM payments WHERE application_id = ?', (r['id'],))
-                    c.execute('DELETE FROM loan_applications WHERE id = ?', (r['id'],))
-                    print(f"Archived fully paid loan application ID: {r['id']} (Name: {r['full_name']}, Total Paid: {total_paid})")
-                except Exception as arch_err:
-                    print(f"Error archiving fully paid loan: {arch_err}")
-                continue  # Don't add to display list
+                    c.execute('''
+                        SELECT COUNT(*) FROM payments
+                        WHERE application_id = ?
+                          AND proof_path IS NOT NULL
+                          AND proof_path != ''
+                          AND COALESCE(proof_verified, 0) = 0
+                    ''', (r['id'],))
+                    pending_proof_count = int(c.fetchone()[0] or 0)
+                except Exception:
+                    pending_proof_count = 0
 
+                if pending_proof_count > 0:
+                    is_overdue = False
+                    months_overdue = 0
+                else:
+                    fully_paid_ids.append(r['id'])
+                    # Archive the fully paid loan record
+                    try:
+                        paid_date = datetime.now().isoformat()
+                        c.execute('''INSERT INTO paid_loans_archive 
+                                    (original_id, timestamp, full_name, contact, amount, months, interest_rate, monthly_payment, total_paid, paid_date, verification)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                                  (r['id'], r['timestamp'], r['full_name'], r['contact'], r['amount'], 
+                                   r['months'], r['interest_rate'], r['monthly_payment'], total_paid, paid_date,
+                                   r['verification'] if 'verification' in r.keys() else None))
+                        # Delete from active tables
+                        c.execute('DELETE FROM payments WHERE application_id = ?', (r['id'],))
+                        c.execute('DELETE FROM loan_applications WHERE id = ?', (r['id'],))
+                        print(f"Archived fully paid loan application ID: {r['id']} (Name: {r['full_name']}, Total Paid: {total_paid})")
+                    except Exception as arch_err:
+                        print(f"Error archiving fully paid loan: {arch_err}")
+                    continue  # Don't add to display list
             # Calculate overdue status
             start_date_str = r['start_date'] if 'start_date' in r.keys() and r['start_date'] else r['timestamp']
             is_overdue = False
@@ -2531,6 +2631,7 @@ def dashboard():
         current_role=current_role,
         pending_users_count=pending_users_count,
         pending_loan_count=pending_loan_count,
+        loan_ready=loan_ready,
     )
 
 
@@ -2547,6 +2648,7 @@ def user_dashboard():
         return render_template(
             'user_dashboard.html',
             applications=[],
+            agreements=[],
             user_name='User',
             loan_submitted=loan_submitted,
             active_loan_count=0,
@@ -2554,6 +2656,7 @@ def user_dashboard():
         )
 
     apps = []
+    agreements = []
     user_name = 'User'
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -2629,6 +2732,30 @@ def user_dashboard():
                 'risk_score': float(r['risk_score']) if r['risk_score'] is not None else 0.0,
                 'fraud_flag_count': fraud_flag_count
             })
+
+        c.execute('''
+            SELECT laa.id, laa.application_id, laa.agreement_text, laa.created_at, laa.signed_at, laa.status,
+                   l.full_name, l.amount, l.months, l.monthly_payment, l.interest_rate
+            FROM loan_agreements laa
+            LEFT JOIN loan_applications l ON l.id = laa.application_id
+            WHERE laa.user_id = ?
+            ORDER BY laa.created_at DESC
+        ''', (user_id,))
+        agreement_rows = c.fetchall()
+        for r in agreement_rows:
+            agreements.append({
+                'id': r['id'],
+                'application_id': r['application_id'],
+                'agreement_text': r['agreement_text'],
+                'created_at': r['created_at'],
+                'signed_at': r['signed_at'],
+                'status': r['status'] or 'active',
+                'full_name': r['full_name'],
+                'amount': r['amount'],
+                'months': r['months'],
+                'monthly_payment': r['monthly_payment'],
+                'interest_rate': r['interest_rate']
+            })
         
         conn.close()
     except Exception as e:
@@ -2640,6 +2767,7 @@ def user_dashboard():
     return render_template(
         'user_dashboard.html',
         applications=apps,
+        agreements=agreements,
         user_name=user_name,
         loan_submitted=loan_submitted,
         active_loan_count=active_loan_count,
@@ -2743,6 +2871,33 @@ def user_get_documents():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
+@app.route('/uploaded-file/<path:filename>', methods=['GET'])
+def uploaded_file(filename):
+    """Serve uploaded proof/document files to authenticated users."""
+    if not verify_session(request):
+        return jsonify({'success': False, 'message': 'Authentication required'}), 401
+
+    safe_rel = os.path.normpath(filename).replace('\\', os.sep)
+    if safe_rel.startswith('..') or os.path.isabs(safe_rel):
+        return jsonify({'success': False, 'message': 'Invalid file path'}), 400
+
+    allowed_roots = [
+        os.path.abspath(UPLOAD_FOLDER),
+        os.path.abspath(os.path.join(BASE_DIR, 'user_documents'))
+    ]
+    candidate_paths = [
+        os.path.abspath(os.path.join(UPLOAD_FOLDER, safe_rel)),
+        os.path.abspath(os.path.join(BASE_DIR, safe_rel))
+    ]
+
+    for candidate in candidate_paths:
+        if any(candidate == root or candidate.startswith(root + os.sep) for root in allowed_roots):
+            if os.path.exists(candidate) and os.path.isfile(candidate):
+                return send_file(candidate)
+
+    return jsonify({'success': False, 'message': 'File not found'}), 404
+
+
 @app.route('/admin/documents', methods=['GET'])
 def admin_documents():
     """Browse all user-uploaded documents (admin only)."""
@@ -2825,6 +2980,8 @@ def pay_application(app_id):
     if not verify_session(request):
         return jsonify({'success': False, 'message': 'Authentication required'}), 401
 
+    session_data = get_active_session(request) or {}
+    current_role = session_data.get('role', '')
     data = request.get_json() if request.is_json else request.form
     try:
         months = int(data.get('months', 1))
@@ -2836,28 +2993,50 @@ def pay_application(app_id):
         amount = 0.0
     payer = data.get('payer', '')
     timestamp = datetime.now().isoformat()
+    proof_path = None
+
+    proof_file = request.files.get('proof_file') if not request.is_json else None
+    if proof_file and proof_file.filename:
+        if not allowed_file(proof_file.filename):
+            return jsonify({'success': False, 'message': 'Invalid proof file type. Allowed: png, jpg, jpeg, pdf'}), 400
+        safe_name = secure_filename(proof_file.filename)
+        proof_filename = f"payment_proof_{app_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{safe_name}"
+        proof_path = f"uploads/{proof_filename}"
 
     try:
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         c = conn.cursor()
-        
-        # Record the payment
-        c.execute('''INSERT INTO payments (application_id, timestamp, months_paid, amount_paid, payer)
-                     VALUES (?, ?, ?, ?, ?)''', (app_id, timestamp, months, amount, payer))
-        receipt_id = c.lastrowid  # Get the payment ID for receipt
-        
+
         # Get full loan details for potential archiving
         c.execute('SELECT * FROM loan_applications WHERE id = ?', (app_id,))
         loan_row = c.fetchone()
         if not loan_row:
-            conn.commit()
             conn.close()
             return jsonify({'success': False, 'message': 'Loan application not found'}), 404
 
         if (loan_row['recommendation'] or '').lower() != 'approved':
             conn.close()
             return jsonify({'success': False, 'message': 'Payments are only allowed after admin approval'}), 403
+
+        if current_role != 'admin' and int(loan_row['user_id'] or 0) != int(get_user_id_from_session(request) or 0):
+            conn.close()
+            return jsonify({'success': False, 'message': 'You can only pay your own loan'}), 403
+
+        if current_role != 'admin' and not proof_path:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Proof of payment is required'}), 400
+
+        if proof_file and proof_path:
+            proof_file.save(os.path.join(BASE_DIR, proof_path))
+
+        # Record the payment
+        proof_verified_default = 1 if current_role == 'admin' and not proof_path else 0
+        c.execute('''INSERT INTO payments
+                     (application_id, timestamp, months_paid, amount_paid, payer, proof_path, proof_verified)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                  (app_id, timestamp, months, amount, payer, proof_path, proof_verified_default))
+        receipt_id = c.lastrowid  # Get the payment ID for receipt
         
         loan_amount = float(loan_row['amount']) if loan_row['amount'] else 0.0
         
@@ -2867,9 +3046,19 @@ def pay_application(app_id):
         
         balance = loan_amount - total_paid
         fully_paid = balance <= 0
+        pending_proof_count = 0
+        if fully_paid:
+            c.execute('''
+                SELECT COUNT(*) FROM payments
+                WHERE application_id = ?
+                  AND proof_path IS NOT NULL
+                  AND proof_path != ''
+                  AND COALESCE(proof_verified, 0) = 0
+            ''', (app_id,))
+            pending_proof_count = int(c.fetchone()[0] or 0)
         
         # If fully paid, archive the record
-        if fully_paid:
+        if fully_paid and pending_proof_count == 0:
             paid_date = datetime.now().isoformat()
             # Archive to paid_loans_archive
             c.execute('''INSERT INTO paid_loans_archive 
@@ -2891,6 +3080,7 @@ def pay_application(app_id):
                 'application_id': app_id, 
                 'months': months, 
                 'amount': amount,
+                'proof_path': proof_path,
                 'fully_paid': True,
                 'archived': True
             })
@@ -2899,10 +3089,11 @@ def pay_application(app_id):
         conn.close()
         return jsonify({
             'success': True, 
-            'message': 'Payment recorded', 
+            'message': 'Payment recorded. Proof is waiting for admin verification' if pending_proof_count > 0 else 'Payment recorded', 
             'application_id': app_id, 
             'months': months, 
             'amount': amount,
+            'proof_path': proof_path,
             'fully_paid': False,
             'new_balance': balance,
             'receipt_id': receipt_id
@@ -2921,7 +3112,8 @@ def get_payments(app_id):
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         c = conn.cursor()
-        c.execute('''SELECT id, application_id, timestamp, months_paid, amount_paid, payer
+        c.execute('''SELECT id, application_id, timestamp, months_paid, amount_paid, payer,
+                            proof_path, proof_verified, proof_verified_at, proof_verified_by, proof_notes
                      FROM payments WHERE application_id = ? ORDER BY id DESC''', (app_id,))
         rows = c.fetchall()
         payments = []
@@ -2932,10 +3124,49 @@ def get_payments(app_id):
                 'timestamp': r['timestamp'],
                 'months_paid': r['months_paid'],
                 'amount_paid': r['amount_paid'],
-                'payer': r['payer']
+                'payer': r['payer'],
+                'proof_path': r['proof_path'] if 'proof_path' in r.keys() else None,
+                'proof_url': f"/uploaded-file/{str(r['proof_path']).replace(os.sep, '/')}" if ('proof_path' in r.keys() and r['proof_path']) else None,
+                'proof_verified': bool(r['proof_verified']) if 'proof_verified' in r.keys() else False,
+                'proof_verified_at': r['proof_verified_at'] if 'proof_verified_at' in r.keys() else None,
+                'proof_verified_by': r['proof_verified_by'] if 'proof_verified_by' in r.keys() else None,
+                'proof_notes': r['proof_notes'] if 'proof_notes' in r.keys() else None
             })
         conn.close()
         return jsonify({'success': True, 'payments': payments})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/admin/payments/<int:payment_id>/verify-proof', methods=['POST'])
+def admin_verify_payment_proof(payment_id):
+    """Admin verifies a payment proof upload."""
+    allowed, auth_result, status = require_roles(request, {'admin'})
+    if not allowed:
+        return auth_result, status
+
+    data = request.get_json() if request.is_json else request.form
+    password = (data.get('password') or '').strip()
+    if not verify_admin_password(password):
+        return jsonify({'success': False, 'message': 'Invalid admin password'}), 403
+
+    notes = (data.get('notes') or '').strip()
+    admin_name = (get_active_session(request) or {}).get('full_name', 'Admin')
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute(
+            '''UPDATE payments
+               SET proof_verified = 1, proof_verified_at = ?, proof_verified_by = ?, proof_notes = ?
+               WHERE id = ? AND proof_path IS NOT NULL AND proof_path != '' ''',
+            (datetime.now().isoformat(), admin_name, notes, payment_id)
+        )
+        conn.commit()
+        updated = c.rowcount
+        conn.close()
+        if not updated:
+            return jsonify({'success': False, 'message': 'Payment proof not found'}), 404
+        return jsonify({'success': True, 'message': 'Payment proof verified'})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
@@ -3778,6 +4009,8 @@ def admin_loan_application_decision(app_id):
             'UPDATE loan_applications SET recommendation = ? WHERE id = ?',
             (new_recommendation, app_id)
         )
+        if new_recommendation == 'approved':
+            create_or_update_loan_agreement(conn, app_id)
         conn.commit()
         conn.close()
         return jsonify({
