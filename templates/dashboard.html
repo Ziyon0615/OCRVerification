@@ -1115,7 +1115,11 @@
                 });
                 const j = await r.json();
                 if(r.ok && j.success){
-                    alert('Payment proof verified');
+                    alert(j.archived ? 'Payment proof verified. Loan is fully paid and moved to Paid Records.' : 'Payment proof verified');
+                    if(j.archived){
+                        window.location.reload();
+                        return;
+                    }
                     btn.closest('td').innerHTML = '<span class="on-time-badge"><i class="fas fa-check-circle"></i> Verified</span>';
                 } else {
                     alert('Failed: ' + (j.message || 'unknown'));

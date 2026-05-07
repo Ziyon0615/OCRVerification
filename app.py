@@ -3154,19 +3154,60 @@ def admin_verify_payment_proof(payment_id):
     admin_name = (get_active_session(request) or {}).get('full_name', 'Admin')
     try:
         conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
         c = conn.cursor()
+        c.execute('SELECT id, application_id, proof_path FROM payments WHERE id = ?', (payment_id,))
+        payment = c.fetchone()
+        if not payment:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Payment not found'}), 404
+
+        if not (payment['proof_path'] or '').strip():
+            conn.close()
+            return jsonify({'success': False, 'message': 'Payment proof not found'}), 404
+
         c.execute(
             '''UPDATE payments
                SET proof_verified = 1, proof_verified_at = ?, proof_verified_by = ?, proof_notes = ?
-               WHERE id = ? AND proof_path IS NOT NULL AND proof_path != '' ''',
+               WHERE id = ?''',
             (datetime.now().isoformat(), admin_name, notes, payment_id)
         )
-        conn.commit()
         updated = c.rowcount
+
+        application_id = payment['application_id']
+        c.execute('SELECT * FROM loan_applications WHERE id = ?', (application_id,))
+        loan_row = c.fetchone()
+        archived = False
+        if loan_row:
+            loan_amount = float(loan_row['amount'] or 0)
+            c.execute('SELECT COALESCE(SUM(amount_paid), 0) FROM payments WHERE application_id = ?', (application_id,))
+            total_paid = float(c.fetchone()[0] or 0)
+            c.execute('''
+                SELECT COUNT(*) FROM payments
+                WHERE application_id = ?
+                  AND proof_path IS NOT NULL
+                  AND TRIM(proof_path) != ''
+                  AND COALESCE(proof_verified, 0) = 0
+            ''', (application_id,))
+            pending_proofs = int(c.fetchone()[0] or 0)
+
+            if total_paid >= loan_amount and pending_proofs == 0:
+                paid_date = datetime.now().isoformat()
+                c.execute('''INSERT INTO paid_loans_archive
+                            (original_id, timestamp, full_name, contact, amount, months, interest_rate, monthly_payment, total_paid, paid_date, verification)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                          (loan_row['id'], loan_row['timestamp'], loan_row['full_name'], loan_row['contact'],
+                           loan_row['amount'], loan_row['months'], loan_row['interest_rate'], loan_row['monthly_payment'],
+                           total_paid, paid_date, loan_row['verification'] if 'verification' in loan_row.keys() else None))
+                c.execute('DELETE FROM payments WHERE application_id = ?', (application_id,))
+                c.execute('DELETE FROM loan_applications WHERE id = ?', (application_id,))
+                archived = True
+
+        conn.commit()
         conn.close()
         if not updated:
             return jsonify({'success': False, 'message': 'Payment proof not found'}), 404
-        return jsonify({'success': True, 'message': 'Payment proof verified'})
+        return jsonify({'success': True, 'message': 'Payment proof verified', 'archived': archived})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
