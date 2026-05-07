@@ -1298,14 +1298,15 @@
                 showToast('Please verify uploaded applicant ID(s) before proceeding.', 'error');
                 return;
             }
-            let nextUrl = '/loan-application?verified_from_analysis=1';
             if (currentRole === 'admin') {
                 if (!selectedPendingApplicantId) {
                     showToast('Please select a pending applicant first.', 'error');
                     return;
                 }
-                nextUrl += `&applicant_user_id=${encodeURIComponent(selectedPendingApplicantId)}`;
+                window.location.href = '/dashboard?loan_ready=1#loan-applications-table';
+                return;
             }
+            let nextUrl = '/loan-application?verified_from_analysis=1';
             window.location.href = nextUrl;
         });
         document.getElementById('reset-multi-btn')?.addEventListener('click', () => {

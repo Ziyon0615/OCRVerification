@@ -305,9 +305,12 @@
         <div class="modal-box" style="max-width:420px;width:95%">
             <div class="modal-title"><i class="fas fa-credit-card"></i> Make Payment</div>
             <form id="paymentForm">
-                <label>Loan ID: <strong id="payLoanId"></strong></label>
-                <input class="modal-input" id="payMonths" type="number" placeholder="Months to pay (default: 1)" value="1" min="1">
-                <input class="modal-input" id="payAmount" type="number" placeholder="Amount to pay" required>
+                <div style="color:var(--muted);font-size:13px;margin-bottom:12px">Loan ID: <strong id="payLoanId" style="color:var(--text)"></strong></div>
+                <div style="color:var(--muted);font-size:13px;margin-bottom:6px">Monthly Payment: <strong id="payMonthlyAmount" style="color:var(--text)">PHP 0.00</strong></div>
+                <label style="display:block;color:var(--muted);font-size:12px;margin-bottom:6px">Months to pay</label>
+                <input class="modal-input" id="payMonths" type="number" value="1" min="1" step="1" required>
+                <label style="display:block;color:var(--muted);font-size:12px;margin-bottom:6px">Amount to pay</label>
+                <input class="modal-input" id="payAmount" type="number" placeholder="Amount to pay" readonly required>
                 <input class="modal-input" id="payPayer" type="text" placeholder="Payer name (optional)">
                 <label style="display:block;color:var(--muted);font-size:12px;margin-bottom:6px">Proof of payment</label>
                 <input class="modal-input" id="payProof" type="file" accept=".pdf,.png,.jpg,.jpeg" required>
@@ -353,11 +356,26 @@
             btn.addEventListener('click', function() {
                 const appId = this.dataset.id;
                 const row = document.querySelector(`tr[data-app-id="${appId}"]`);
+                const monthlyPayment = parseFloat(row?.dataset.monthly) || 0;
+                const balanceText = row?.querySelector('.cell-balance')?.textContent || '0';
+                const balance = parseFloat(balanceText.replace(/[^\d.]/g, '')) || 0;
+                const monthsInput = document.getElementById('payMonths');
+                const amountInput = document.getElementById('payAmount');
+                const updatePaymentAmount = () => {
+                    const months = Math.max(1, parseInt(monthsInput.value, 10) || 1);
+                    const calculated = monthlyPayment > 0 ? Math.min(monthlyPayment * months, balance || monthlyPayment * months) : 0;
+                    monthsInput.value = months;
+                    amountInput.value = calculated.toFixed(2);
+                };
                 document.getElementById('payLoanId').textContent = appId;
+                document.getElementById('payMonthlyAmount').textContent = 'PHP ' + monthlyPayment.toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2});
+                monthsInput.value = 1;
+                updatePaymentAmount();
+                monthsInput.oninput = updatePaymentAmount;
                 document.getElementById('paymentModal').style.display = 'flex';
                 document.getElementById('paymentForm').onsubmit = async (e) => {
                     e.preventDefault();
-                    const months = parseInt(document.getElementById('payMonths').value) || 1;
+                    const months = Math.max(1, parseInt(document.getElementById('payMonths').value, 10) || 1);
                     const amount = parseFloat(document.getElementById('payAmount').value);
                     const payer = document.getElementById('payPayer').value;
                     const proof = document.getElementById('payProof').files[0];
