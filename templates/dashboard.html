@@ -104,6 +104,8 @@
         tbody td{padding:12px;border-bottom:1px solid rgba(255,255,255,0.03)}
         tbody tr{transition:background 0.15s}
         tbody tr:hover{background:rgba(255,255,255,0.02)}
+        .col-id{width:80px}
+        .col-actions{min-width:220px}
 
         .search-row{display:flex;gap:12px;align-items:center;margin-top:12px}
         .search{flex:1;display:flex;align-items:center;background:var(--glass);padding:10px;border-radius:10px}
@@ -430,7 +432,7 @@
                 <table>
                     <thead>
                         <tr>
-                            <th class="inl-1">ID</th>
+                            <th class="col-id">ID</th>
                             <th>Timestamp</th>
                             <th>Full Name</th>
                             <th>Contact</th>
@@ -443,7 +445,7 @@
                             <th>Status</th>
                             <th>Recommendation</th>
                             <th>Risk</th>
-                            <th class="inl-1">Actions</th>
+                            <th class="col-actions">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="appsTable">
